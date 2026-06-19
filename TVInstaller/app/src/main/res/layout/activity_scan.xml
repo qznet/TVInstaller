@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_app"
+    android:orientation="vertical"
+    android:padding="@dimen/page_padding">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/scan_title"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/title_text"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/statusBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_badge"
+            android:text="扫描中"
+            android:textColor="@color/accent"
+            android:textSize="@dimen/sub_text" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/page_gap"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SMB"
+            android:textColor="@color/accent"
+            android:textSize="44sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/scanMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:text="@string/scan_running"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/body_text" />
+
+        <ProgressBar
+            android:id="@+id/scanProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="10dp"
+            android:layout_marginTop="22dp"
+            android:indeterminate="false"
+            android:max="100"
+            android:progress="0" />
+
+        <TextView
+            android:id="@+id/scanCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="已发现 0 个设备"
+            android:textColor="@color/text_muted"
+            android:textSize="@dimen/sub_text" />
+    </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/deviceRecycler"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="@dimen/page_gap"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:focusable="true"
+        android:nextFocusDown="@id/manualIpButton" />
+
+    <TextView
+        android:id="@+id/emptyText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:padding="14dp"
+        android:text="扫描到设备或添加历史设备后，可直接选择连接"
+        android:textColor="@color/text_muted"
+        android:textSize="@dimen/sub_text" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/manualIpButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_button_secondary"
+            android:focusable="true"
+            android:minWidth="132dp"
+            android:nextFocusUp="@id/deviceRecycler"
+            android:nextFocusRight="@id/refreshButton"
+            android:text="@string/manual_ip"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/button_text" />
+
+        <Button
+            android:id="@+id/refreshButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginLeft="@dimen/page_gap"
+            android:layout_marginStart="@dimen/page_gap"
+            android:background="@drawable/bg_button_primary"
+            android:focusable="true"
+            android:minWidth="110dp"
+            android:nextFocusUp="@id/deviceRecycler"
+            android:nextFocusLeft="@id/manualIpButton"
+            android:text="@string/refresh"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/button_text" />
+    </LinearLayout>
+</LinearLayout>

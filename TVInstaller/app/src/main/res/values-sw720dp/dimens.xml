@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="page_padding">36dp</dimen>
+    <dimen name="page_gap">18dp</dimen>
+    <dimen name="card_radius">8dp</dimen>
+    <dimen name="card_padding">22dp</dimen>
+    <dimen name="title_text">28sp</dimen>
+    <dimen name="body_text">22sp</dimen>
+    <dimen name="sub_text">16sp</dimen>
+    <dimen name="button_text">18sp</dimen>
+    <dimen name="card_min_height">96dp</dimen>
+</resources>
+

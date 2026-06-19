@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMB安装助手 - 交互原型 (TV/Phone)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        body {
+            background: #1a1a1a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        /* 模式切换 */
+        .mode-toggle {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            background: #2a2a2a;
+            padding: 8px;
+            border-radius: 60px;
+            border: 1px solid #444;
+        }
+        .mode-btn {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 40px;
+            background: transparent;
+            color: #999;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mode-btn.active {
+            background: #4f8cff;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(79, 140, 255, 0.3);
+        }
+        /* 设备模拟器外壳 */
+        .device-wrapper {
+            background: #0d0d0d;
+            border-radius: 48px;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        /* TV 模式 (16:9 宽屏) */
+        .device-wrapper.tv {
+            width: 900px;
+            aspect-ratio: 16 / 9;
+            border-radius: 32px;
+            padding: 20px;
+        }
+        .device-wrapper.tv .screen {
+            border-radius: 20px;
+        }
+        /* 手机模式 (9:16 竖屏) */
+        .device-wrapper.phone {
+            width: 340px;
+            aspect-ratio: 9 / 16;
+            border-radius: 48px;
+            padding: 16px;
+        }
+        .device-wrapper.phone .screen {
+            border-radius: 32px;
+        }
+
+        .screen {
+            background: #121212;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px 28px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            color: #fff;
+            scrollbar-width: thin;
+            scrollbar-color: #4f8cff #2a2a2a;
+        }
+        .screen::-webkit-scrollbar {
+            width: 4px;
+        }
+        .screen::-webkit-scrollbar-thumb {
+            background: #4f8cff;
+            border-radius: 10px;
+        }
+
+        /* 通用UI组件 */
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #888;
+        }
+        .app-title {
+            font-size: 22px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4f8cff, #9f7bf5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .scan-badge {
+            background: #2a2a2a;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            color: #4f8cff;
+            border: 1px solid #4f8cff44;
+        }
+
+        /* 卡片列表 (TV大卡片风格) */
+        .card-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+        .card-item {
+            background: #1e1e1e;
+            border-radius: 16px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .card-item:focus, .card-item:hover {
+            border-color: #4f8cff;
+            background: #282828;
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(79, 140, 255, 0.15);
+        }
+        .card-item .icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: #2c2c2c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            flex-shrink: 0;
+        }
+        .card-item .info {
+            flex: 1;
+        }
+        .card-item .info .name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .card-item .info .sub {
+            font-size: 14px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .card-item .action-btn {
+            background: #4f8cff;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* 弹窗 (Modal) */
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: inherit;
+            z-index: 10;
+            padding: 20px;
+        }
+        .modal-box {
+            background: #1e1e1e;
+            border-radius: 28px;
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid #333;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+        }
+        .modal-box h3 {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+        .modal-box p {
+            color: #aaa;
+            font-size: 15px;
+            margin-bottom: 24px;
+        }
+        .input-group {
+            margin-bottom: 18px;
+        }
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            background: #121212;
+            border: 1px solid #333;
+            border-radius: 14px;
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .input-group input:focus {
+            border-color: #4f8cff;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .modal-actions button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 60px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary {
+            background: #4f8cff;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #3a7ae8;
+        }
+        .btn-secondary {
+            background: #2a2a2a;
+            color: #ccc;
+        }
+        .btn-secondary:hover {
+            background: #3a3a3a;
+        }
+
+        /* 进度条 */
+        .progress-container {
+            margin-top: 16px;
+            background: #2a2a2a;
+            border-radius: 60px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4f8cff, #9f7bf5);
+            border-radius: 60px;
+            transition: width 0.2s;
+        }
+
+        /* 页面切换 (模拟) */
+        .page {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+        .page.active {
+            display: flex;
+        }
+
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            text-align: center;
+        }
+        .empty-state .big-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        /* 底部Hint */
+        .hint {
+            margin-top: 20px;
+            color: #444;
+            font-size: 13px;
+            text-align: center;
+            border-top: 1px solid #222;
+            padding-top: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 切换按钮 -->
+    <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="tv">🖥️ TV (16:9)</button>
+        <button class="mode-btn" data-mode="phone">📱 手机 (9:16)</button>
+    </div>
+
+    <!-- 设备外壳 -->
+    <div class="device-wrapper tv" id="deviceWrapper">
+        <div class="screen" id="screen">
+
+            <!-- ================= 页面1: 扫描 ================= -->
+            <div class="page active" id="pageScan">
+                <div class="status-bar">
+                    <span class="app-title">⚡ SMB 安装助手</span>
+                    <span class="scan-badge">🔄 扫描中...</span>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:20px;">
+                    <div style="font-size:48px;">📡</div>
+                    <div style="font-weight:300; color:#aaa; font-size:20px;">正在搜索局域网 SMB 服务...</div>
+                    <div style="width:60%; max-width:300px; background:#2a2a2a; height:6px; border-radius:10px; overflow:hidden;">
+                        <div style="width:70%; height:100%; background:#4f8cff; border-radius:10px; animation: pulse 1.5s infinite;"></div>
+                    </div>
+                    <div style="font-size:14px; color:#666; margin-top:8px;">已发现 2 个设备</div>
+                </div>
+                <div class="hint">⏱️ 扫描自动完成 (5s)</div>
+            </div>
+
+            <!-- ================= 页面2: 设备列表 ================= -->
+            <div class="page" id="pageDevice">
+                <div class="status-bar">
+                    <span class="app-title">⚡ 选择设备</span>
+                    <span style="color:#4f8cff; font-size:14px; cursor:pointer;" onclick="showToast('手动输入IP功能')">➕ 手动添加</span>
+                </div>
+                <div class="card-list">
+                    <div class="card-item" onclick="showLogin()">
+                        <div class="icon">📁</div>
+                        <div class="info">
+                            <div class="name">海康智存 (SMB)</div>
+                            <div class="sub">192.168.1.100 · 已在线</div>
+                        </div>
+                        <div class="action-btn">连接</div>
+                    </div>
+                    <div class="card-item" onclick="showLogin()">
+                        <div class="icon">💻</div>
+                        <div class="info">
+                            <div class="name">我的电脑 (WORKGROUP)</div>
+                            <div class="sub">192.168.1.105 · 已在线</div>
+                        </div>
+                        <div class="action-btn">连接</div>
+                    </div>
+                </div>
+                <div class="hint">⬆️⬇️ 遥控器选择 · OK确认</div>
+            </div>
+
+            <!-- ================= 页面3: 文件列表 (含登录弹窗) ================= -->
+            <div class="page" id="pageFiles" style="position:relative;">
+                <div class="status-bar">
+                    <span class="app-title">📂 海康智存 / APK</span>
+                    <span style="color:#888; font-size:13px; cursor:pointer;" onclick="logout()">🚪 退出</span>
+                </div>
+                <div class="card-list">
+                    <div class="card-item" onclick="showInstall('当贝市场')">
+                        <div class="icon">📦</div>
+                        <div class="info">
+                            <div class="name">当贝市场_v4.3.apk</div>
+                            <div class="sub">2026-06-18 22:10 · 12.4 MB</div>
+                        </div>
+                        <div class="action-btn">安装</div>
+                    </div>
+                    <div class="card-item" onclick="showInstall('Kodi')">
+                        <div class="icon">📦</div>
+                        <div class="info">
+                            <div class="name">Kodi_20.5.apk</div>
+                            <div class="sub">2026-06-17 14:23 · 89.2 MB</div>
+                        </div>
+                        <div class="action-btn">安装</div>
+                    </div>
+                    <div class="card-item" onclick="showInstall('VLC')">
+                        <div class="icon">📦</div>
+                        <div class="info">
+                            <div class="name">VLC_3.5.4.apk</div>
+                            <div class="sub">2026-06-15 09:12 · 45.1 MB</div>
+                        </div>
+                        <div class="action-btn">安装</div>
+                    </div>
+                </div>
+                <!-- 登录弹窗 (默认隐藏) -->
+                <div class="modal-overlay" id="loginModal" style="display:none;">
+                    <div class="modal-box">
+                        <h3>🔐 连接设备</h3>
+                        <p>请输入 SMB 共享凭据</p>
+                        <div class="input-group">
+                            <label>👤 用户名</label>
+                            <input type="text" value="admin" id="smbUser">
+                        </div>
+                        <div class="input-group">
+                            <label>🔑 密码</label>
+                            <input type="password" value="123456" id="smbPass">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                            <input type="checkbox" checked id="rememberMe" style="width:18px;height:18px;accent-color:#4f8cff;">
+                            <label for="rememberMe" style="color:#aaa; font-size:14px;">记住密码 (加密存储)</label>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn-secondary" onclick="hideLogin()">取消</button>
+                            <button class="btn-primary" onclick="doLogin()">登录</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- 安装确认弹窗 -->
+                <div class="modal-overlay" id="installModal" style="display:none;">
+                    <div class="modal-box">
+                        <h3>📲 安装应用</h3>
+                        <p id="installAppName">准备安装: 当贝市场_v4.3.apk</p>
+                        <div style="background:#121212; border-radius:16px; padding:16px; margin-bottom:16px;">
+                            <div style="display:flex; justify-content:space-between; color:#aaa; font-size:14px;">
+                                <span>下载进度</span>
+                                <span id="progressText">0%</span>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar" id="progressBar" style="width:0%;"></div>
+                            </div>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn-secondary" onclick="hideInstall()">取消</button>
+                            <button class="btn-primary" id="installConfirmBtn" onclick="doInstall()" disabled style="opacity:0.5;">等待下载...</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="hint">⬆️⬇️ 浏览 · OK安装</div>
+            </div>
+
+            <!-- Toast 提示 -->
+            <div id="toast" style="position:absolute; bottom:80px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:12px 24px; border-radius:60px; font-size:14px; display:none; white-space:nowrap; border:1px solid #444; z-index:99;"></div>
+
+        </div>
+    </div>
+
+    <script>
+        // ---------- 模式切换 (TV / Phone) ----------
+        const wrapper = document.getElementById('deviceWrapper');
+        const modeBtns = document.querySelectorAll('.mode-btn');
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                modeBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const mode = this.dataset.mode;
+                wrapper.className = 'device-wrapper ' + mode;
+            });
+        });
+
+        // ---------- 页面导航 ----------
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        // 模拟扫描自动跳转
+        setTimeout(() => {
+            showPage('pageDevice');
+        }, 3000);
+
+        // ---------- 登录弹窗 ----------
+        function showLogin() {
+            document.getElementById('loginModal').style.display = 'flex';
+        }
+
+        function hideLogin() {
+            document.getElementById('loginModal').style.display = 'none';
+        }
+
+        function doLogin() {
+            const user = document.getElementById('smbUser').value;
+            const pass = document.getElementById('smbPass').value;
+            if (!user || !pass) {
+                showToast('请输入用户名和密码');
+                return;
+            }
+            hideLogin();
+            showToast('✅ 登录成功，凭证已加密存储');
+            // 切换到文件页 (已经在了，确保显示)
+            showPage('pageFiles');
+        }
+
+        // ---------- 安装弹窗 (含进度模拟) ----------
+        let installTimer = null;
+
+        function showInstall(name) {
+            document.getElementById('installAppName').innerText = '准备安装: ' + name + '.apk';
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').innerText = '0%';
+            const confirmBtn = document.getElementById('installConfirmBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.style.opacity = '0.5';
+            confirmBtn.innerText = '下载中...';
+            document.getElementById('installModal').style.display = 'flex';
+
+            // 模拟下载进度
+            if (installTimer) clearInterval(installTimer);
+            let progress = 0;
+            installTimer = setInterval(() => {
+                progress += Math.floor(Math.random() * 8) + 2;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(installTimer);
+                    document.getElementById('progressBar').style.width = '100%';
+                    document.getElementById('progressText').innerText = '100%';
+                    confirmBtn.disabled = false;
+                    confirmBtn.style.opacity = '1';
+                    confirmBtn.innerText = '✅ 立即安装';
+                    showToast('下载完成，点击安装');
+                }
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressText').innerText = progress + '%';
+            }, 300);
+        }
+
+        function hideInstall() {
+            document.getElementById('installModal').style.display = 'none';
+            if (installTimer) clearInterval(installTimer);
+        }
+
+        function doInstall() {
+            showToast('📲 正在调用系统安装器... (模拟)');
+            setTimeout(() => {
+                hideInstall();
+                showToast('✅ 安装界面已弹出 (真实场景需系统权限)');
+            }, 800);
+        }
+
+        // ---------- 退出登录 ----------
+        function logout() {
+            if (confirm('确定退出登录并清除存储的凭证吗？')) {
+                showToast('🔒 已清除凭证，返回首页');
+                setTimeout(() => showPage('pageScan'), 500);
+            }
+        }
+
+        // ---------- Toast ----------
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.style.display = 'block';
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => { t.style.display = 'none'; }, 2500);
+        }
+
+        // 模拟回车/遥控器点击 (键盘支持)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                const active = document.activeElement;
+                if (active && active.click) active.click();
+            }
+        });
+
+        console.log('✅ SMB 安装助手原型已加载。点击卡片体验流程。');
+    </script>
+
+</body>
+</html>

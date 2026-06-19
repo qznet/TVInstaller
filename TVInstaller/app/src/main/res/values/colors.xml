@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_app">#121212</color>
+    <color name="bg_panel">#1E1E1E</color>
+    <color name="bg_panel_focused">#292929</color>
+    <color name="bg_input">#181818</color>
+    <color name="accent">#4F8CFF</color>
+    <color name="accent_pressed">#3A74D8</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="text_secondary">#B3B3B3</color>
+    <color name="text_muted">#777777</color>
+    <color name="line">#333333</color>
+    <color name="warning">#FFC04F</color>
+    <color name="danger">#FF6B6B</color>
+</resources>
+
