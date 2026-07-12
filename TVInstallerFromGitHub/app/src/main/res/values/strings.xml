@@ -2,12 +2,14 @@
 <resources>
     <string name="app_name">TV Installer from GitHub</string>
     <string name="header_title">GitHub TV</string>
-    <string name="preset_url" translatable="false">https://raw.githubusercontent.com/bigsinger/TVInstaller/main/TVInstallerFromGitHub/data/preset.txt</string>
+    <string name="header_subtitle">浏览 GitHub 仓库，下载并安装 APK</string>
+    <string name="preset_url" translatable="false">https://raw.githubusercontent.com/bigsinger/TVInstaller/refs/heads/main/data/config.txt</string>
 
     <string name="sync">同步</string>
     <string name="syncing">正在同步…</string>
     <string name="sync_success">同步完成</string>
     <string name="sync_failed">同步失败，请检查网络</string>
+    <string name="sync_timeout_fallback">同步超时，已使用内置配置</string>
     <string name="favorite">收藏</string>
     <string name="remove_favorite">取消收藏</string>
     <string name="favorite_added">已添加收藏</string>
@@ -25,7 +27,7 @@
     <string name="refresh">刷新</string>
     <string name="default_repository_url" translatable="false">github.com</string>
     <string name="browser_loading">正在加载 GitHub…</string>
-    <string name="browser_error">页面加载失败，请检查网络</string>
+    <string name="browser_error">网页无法加载，请检查网络后按刷新重试</string>
 
     <string name="download_idle">等待下载</string>
     <string name="download_start_format">开始下载：%1$s</string>
@@ -44,7 +46,6 @@
     <string name="cancel">取消</string>
     <string name="install">安装</string>
 
-    <string name="remote_header_hint">方向键 导航   OK 选择   BACK 返回</string>
-    <string name="remote_footer_hint">方向键：列表/文件切换    OK：进入/下载 APK    MENU：收藏    BACK：返回上级</string>
+    <string name="remote_header_hint">方向键导航 · OK 选择/下载 · MENU 收藏 · BACK 返回</string>
     <string name="download_panel_content_description">APK 下载状态</string>
 </resources>

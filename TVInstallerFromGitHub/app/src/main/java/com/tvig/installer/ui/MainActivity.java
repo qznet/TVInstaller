@@ -57,6 +57,8 @@ import com.tvig.installer.net.SyncClient;
 import com.tvig.installer.service.ApkDownloadService;
 
 import java.io.File;
+import java.io.InterruptedIOException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -75,6 +77,7 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
     private SyncClient syncClient;
     private RepositoryAdapter repositoryAdapter;
     private RepositoryItem currentRepository;
+    private RepositoryItem selectedRepository;
 
     private Button syncButton;
     private Button favoriteButton;
@@ -94,6 +97,8 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
     private boolean syncing;
     private boolean clearHistoryOnPreview;
     private boolean downloadFailed;
+    private String mainFrameUrl;
+    private String lastWebErrorUrl;
     private String lastDownloadUrl;
     private String lastDownloadFileName;
     private File pendingInstallFile;
@@ -247,6 +252,8 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         settings.setDisplayZoomControls(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setBlockNetworkLoads(false);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
         settings.setAllowFileAccessFromFileURLs(false);
@@ -308,6 +315,17 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
             @Override
             public void onError(Throwable error) {
                 finishSync();
+                if (isTimeout(error)) {
+                    try {
+                        List<RepositoryItem> bundled = repositoryStore.restoreBundledPreset();
+                        replaceRepositories(bundled, selectedRepository, selectedSource);
+                        Toast.makeText(MainActivity.this,
+                                R.string.sync_timeout_fallback, Toast.LENGTH_LONG).show();
+                        return;
+                    } catch (Exception fallbackError) {
+                        // Keep the last usable local configuration if packaged recovery also fails.
+                    }
+                }
                 Toast.makeText(MainActivity.this,
                         R.string.sync_failed, Toast.LENGTH_LONG).show();
             }
@@ -318,6 +336,22 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         syncing = false;
         syncCall = null;
         syncButton.setText(R.string.sync);
+    }
+
+    private boolean isTimeout(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof SocketTimeoutException) {
+                return true;
+            }
+            if (current instanceof InterruptedIOException
+                    && current.getMessage() != null
+                    && current.getMessage().toLowerCase(Locale.US).contains("timeout")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private void reloadRepositories(String selectedRepository,
@@ -346,6 +380,12 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         if (currentRepository == null && !repositories.isEmpty()) {
             currentRepository = repositories.get(0);
         }
+        if (this.selectedRepository != null) {
+            this.selectedRepository = findRepository(
+                    this.selectedRepository.getRepository(),
+                    this.selectedRepository.getSource());
+        }
+        repositoryAdapter.setSelectedItem(this.selectedRepository);
         updateFavoriteButton();
     }
 
@@ -374,6 +414,7 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         }
         String repository = currentRepository.getRepository();
         RepositoryItem.Source source = currentRepository.getSource();
+        selectedRepository = currentRepository;
         boolean nowFavorite;
         try {
             nowFavorite = repositoryStore.toggleFavorite(repository);
@@ -402,8 +443,15 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
     @Override
     public void onRepositoryClick(@NonNull RepositoryItem item) {
         currentRepository = item;
+        selectedRepository = item;
+        repositoryAdapter.setSelectedItem(item);
         updateFavoriteButton();
-        webView.loadUrl(item.getUrl());
+        // The local preview may still be rendering when the user immediately enters a
+        // repository after launch. Cancel it first so it cannot win the navigation race.
+        final String repositoryUrl = item.getUrl();
+        webView.stopLoading();
+        browserUrlText.setText(displayUrl(repositoryUrl));
+        webView.loadUrl(repositoryUrl);
         webView.requestFocus();
     }
 
@@ -735,10 +783,6 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
                 onRepositoryClick(currentRepository);
                 return true;
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && webView.hasFocus()) {
-                navigateBrowserBack();
-                return true;
-            }
         }
         return super.dispatchKeyEvent(event);
     }
@@ -849,6 +893,8 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
 
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            mainFrameUrl = url;
+            lastWebErrorUrl = null;
             browserUrlText.setText(displayUrl(url));
             webProgress.setVisibility(View.VISIBLE);
         }
@@ -867,9 +913,9 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         @Override
         public void onReceivedError(WebView view, int errorCode,
                                     String description, String failingUrl) {
-            if (failingUrl == null || failingUrl.equals(view.getUrl())) {
-                Toast.makeText(MainActivity.this,
-                        R.string.browser_error, Toast.LENGTH_LONG).show();
+            if (TextUtils.equals(failingUrl, mainFrameUrl)
+                    || TextUtils.equals(failingUrl, view.getUrl())) {
+                showBrowserError(failingUrl);
             }
         }
 
@@ -878,9 +924,18 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         public void onReceivedError(WebView view, WebResourceRequest request,
                                     WebResourceError error) {
             if (request != null && request.isForMainFrame()) {
-                Toast.makeText(MainActivity.this,
-                        R.string.browser_error, Toast.LENGTH_LONG).show();
+                showBrowserError(request.getUrl() == null
+                        ? null : request.getUrl().toString());
             }
+        }
+
+        private void showBrowserError(String url) {
+            if (TextUtils.equals(lastWebErrorUrl, url)) {
+                return;
+            }
+            lastWebErrorUrl = url;
+            Toast.makeText(MainActivity.this,
+                    R.string.browser_error, Toast.LENGTH_LONG).show();
         }
 
         @Override

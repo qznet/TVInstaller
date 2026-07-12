@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="page_padding_horizontal">24dp</dimen>
-    <dimen name="page_padding_vertical">18dp</dimen>
-    <dimen name="content_gap">20dp</dimen>
-    <dimen name="section_gap">12dp</dimen>
+    <dimen name="page_padding_horizontal">14dp</dimen>
+    <dimen name="page_padding_vertical">10dp</dimen>
+    <dimen name="content_gap">12dp</dimen>
+    <dimen name="section_gap">6dp</dimen>
 
     <dimen name="shell_radius">24dp</dimen>
     <dimen name="panel_radius">20dp</dimen>
@@ -12,12 +12,12 @@
     <dimen name="focus_stroke">3dp</dimen>
     <dimen name="normal_stroke">1dp</dimen>
 
-    <dimen name="header_height">54dp</dimen>
-    <dimen name="toolbar_height">58dp</dimen>
-    <dimen name="button_height">42dp</dimen>
+    <dimen name="header_height">46dp</dimen>
+    <dimen name="toolbar_height">52dp</dimen>
+    <dimen name="button_height">40dp</dimen>
     <dimen name="button_min_width">84dp</dimen>
     <dimen name="button_padding_horizontal">16dp</dimen>
-    <dimen name="panel_padding">14dp</dimen>
+    <dimen name="panel_padding">10dp</dimen>
     <dimen name="card_padding_horizontal">18dp</dimen>
     <dimen name="card_padding_vertical">13dp</dimen>
     <dimen name="card_spacing">10dp</dimen>
@@ -30,6 +30,7 @@
     <dimen name="repo_title_text">18sp</dimen>
     <dimen name="body_text">15sp</dimen>
     <dimen name="repo_description_text">14sp</dimen>
-    <dimen name="hint_text">13sp</dimen>
+    <dimen name="hint_text">11sp</dimen>
+    <dimen name="subtitle_text">12sp</dimen>
     <dimen name="badge_text">12sp</dimen>
 </resources>

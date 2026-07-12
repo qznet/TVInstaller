@@ -16,7 +16,7 @@ android {
 
     sourceSets {
         main {
-            assets.srcDirs = ['src/main/assets', "${rootDir}/data"]
+            assets.srcDirs = ['src/main/assets', "${rootDir}/../data"]
         }
     }
 
@@ -27,6 +27,9 @@ android {
 
     buildTypes {
         release {
+            // A local release artifact must be installable even when no production
+            // keystore has been supplied. Replace this with the production key for publishing.
+            signingConfig signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

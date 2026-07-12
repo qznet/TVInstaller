@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/bg_app"
-    android:padding="12dp">
+    android:padding="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -22,19 +22,36 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/titleText"
-                style="@style/Text.GithubTv.Title"
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/header_title" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/titleText"
+                    style="@style/Text.GithubTv.Title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/header_title" />
+
+                <TextView
+                    style="@style/Text.GithubTv.Hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:text="@string/header_subtitle"
+                    android:textColor="@color/text_muted"
+                    android:textSize="@dimen/subtitle_text" />
+            </LinearLayout>
 
             <TextView
                 style="@style/Text.GithubTv.Hint"
-                android:layout_width="wrap_content"
+                android:layout_width="300dp"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_remote_hint"
+                android:gravity="end|center_vertical"
+                android:maxLines="2"
                 android:text="@string/remote_header_hint" />
         </LinearLayout>
 
@@ -107,12 +124,12 @@
                     android:id="@+id/repoRecycler"
                     android:layout_width="match_parent"
                     android:layout_height="0dp"
-                    android:layout_marginTop="8dp"
+                    android:layout_marginTop="4dp"
                     android:layout_weight="1"
                     android:clipToPadding="false"
                     android:descendantFocusability="afterDescendants"
                     android:focusable="false"
-                    android:paddingBottom="8dp"
+                    android:paddingBottom="4dp"
                     android:scrollbars="vertical" />
 
                 <TextView
@@ -120,7 +137,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:paddingTop="8dp"
+                    android:paddingTop="4dp"
                     android:text="@string/repository_list_hint"
                     android:textColor="@color/text_muted" />
             </LinearLayout>
@@ -241,19 +258,5 @@
             </LinearLayout>
         </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="@dimen/section_gap"
-            android:background="@color/border" />
-
-        <TextView
-            style="@style/Text.GithubTv.Hint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:paddingTop="10dp"
-            android:text="@string/remote_footer_hint"
-            android:textColor="@color/text_muted" />
     </LinearLayout>
 </FrameLayout>

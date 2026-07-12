@@ -31,8 +31,8 @@ public final class RepositoryStore {
     public static final int MAX_PRESET_BYTES = 1024 * 1024;
 
     private static final String TAG = "RepositoryStore";
-    private static final String PRESET_ASSET = "preset.txt";
-    private static final String PRESET_FILE = "preset.txt";
+    private static final String PRESET_ASSET = "config.txt";
+    private static final String PRESET_FILE = "config.txt";
     private static final String PREFERENCES = "repository_store";
     private static final String KEY_FAVORITES = "favorites_json";
     private static final Charset UTF_8 = Charset.forName("UTF-8");
@@ -112,6 +112,14 @@ public final class RepositoryStore {
     public synchronized void replacePresetAtomically(byte[] presetBytes) throws IOException {
         validatePreset(presetBytes);
         writePresetAtomically(presetBytes);
+    }
+
+    /** Restores the packaged configuration after a remote sync timeout. */
+    public synchronized List<RepositoryItem> restoreBundledPreset() throws IOException {
+        byte[] bundled = readBundledPreset();
+        validatePreset(bundled);
+        writePresetAtomically(bundled);
+        return getRepositories();
     }
 
     private void ensurePresetExists() throws IOException {

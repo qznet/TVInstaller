@@ -14,6 +14,13 @@
             <corners android:radius="@dimen/card_radius" />
         </shape>
     </item>
+    <item android:state_activated="true">
+        <shape>
+            <solid android:color="@color/bg_panel_focused" />
+            <stroke android:width="2dp" android:color="@color/focus" />
+            <corners android:radius="@dimen/card_radius" />
+        </shape>
+    </item>
     <item>
         <shape>
             <solid android:color="@color/bg_panel" />

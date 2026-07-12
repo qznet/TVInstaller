@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Keep controls comfortably readable on large and 4K TV density buckets. -->
-    <dimen name="page_padding_horizontal">32dp</dimen>
-    <dimen name="page_padding_vertical">24dp</dimen>
-    <dimen name="content_gap">24dp</dimen>
-    <dimen name="header_height">64dp</dimen>
-    <dimen name="toolbar_height">68dp</dimen>
-    <dimen name="button_height">48dp</dimen>
-    <dimen name="button_min_width">96dp</dimen>
-    <dimen name="panel_padding">18dp</dimen>
+    <dimen name="page_padding_horizontal">20dp</dimen>
+    <dimen name="page_padding_vertical">12dp</dimen>
+    <dimen name="content_gap">16dp</dimen>
+    <dimen name="header_height">52dp</dimen>
+    <dimen name="toolbar_height">56dp</dimen>
+    <dimen name="button_height">42dp</dimen>
+    <dimen name="button_min_width">90dp</dimen>
+    <dimen name="panel_padding">12dp</dimen>
     <dimen name="card_padding_horizontal">20dp</dimen>
     <dimen name="card_padding_vertical">15dp</dimen>
     <dimen name="card_min_height">98dp</dimen>

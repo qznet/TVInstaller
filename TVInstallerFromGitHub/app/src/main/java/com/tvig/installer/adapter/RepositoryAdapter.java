@@ -33,6 +33,8 @@ public final class RepositoryAdapter
 
     private final List<RepositoryItem> items = new ArrayList<>();
     private final Listener listener;
+    private String selectedRepository;
+    private RepositoryItem.Source selectedSource;
 
     public RepositoryAdapter(List<RepositoryItem> items, Listener listener) {
         this.listener = listener;
@@ -45,6 +47,19 @@ public final class RepositoryAdapter
             items.addAll(newItems);
         }
         notifyDataSetChanged();
+    }
+
+    /** Keeps the chosen repository visibly selected while focus moves into the browser. */
+    public void setSelectedItem(RepositoryItem item) {
+        String repository = item == null ? null : item.getRepository();
+        RepositoryItem.Source source = item == null ? null : item.getSource();
+        boolean unchanged = TextUtils.equals(selectedRepository, repository)
+                && selectedSource == source;
+        selectedRepository = repository;
+        selectedSource = source;
+        if (!unchanged) {
+            notifyDataSetChanged();
+        }
     }
 
     @NonNull
@@ -61,6 +76,7 @@ public final class RepositoryAdapter
         String repository = emptyIfNull(item.getRepository());
         String description = item.getDescription();
         boolean favorite = item.getSource() == RepositoryItem.Source.FAVORITE;
+        holder.repoCard.setActivated(isSelected(item));
 
         holder.repoName.setText(repository);
         if (TextUtils.isEmpty(description) || TextUtils.isEmpty(description.trim())) {
@@ -117,6 +133,12 @@ public final class RepositoryAdapter
             }
         }
         return true;
+    }
+
+    private boolean isSelected(RepositoryItem item) {
+        return item != null
+                && selectedSource == item.getSource()
+                && TextUtils.equals(selectedRepository, item.getRepository());
     }
 
     private static void scrollFocusedCardIntoView(

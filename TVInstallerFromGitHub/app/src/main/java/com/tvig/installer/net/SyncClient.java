@@ -35,8 +35,9 @@ public final class SyncClient {
 
     public SyncClient(RepositoryStore store) {
         this(store, new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
+                .callTimeout(3, TimeUnit.SECONDS)
+                .connectTimeout(3, TimeUnit.SECONDS)
+                .readTimeout(3, TimeUnit.SECONDS)
                 .protocols(Collections.singletonList(Protocol.HTTP_1_1))
                 .followRedirects(true)
                 .followSslRedirects(true)

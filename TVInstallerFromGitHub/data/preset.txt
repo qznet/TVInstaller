@@ -1,7 +1,0 @@
-# TVInstallerFromGitHub 内置仓库列表
-# 格式：owner/repo = 可选描述
-bigsinger/TVInstaller = TV 安装器项目
-o0HalfLife0o/TVBoxOSC=TVBox
-j4Uq/TVBoxOSC=TVBox
-q215613905/TVBoxOSCRelease=TVBox
-FongMi/Release=影視TV（小彩盒）

@@ -19,6 +19,14 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    buildTypes {
+        release {
+            // Produces an installable local release APK. Use a production keystore
+            // before distributing through an app store.
+            signingConfig signingConfigs.debug
+        }
+    }
 }
 
 dependencies {
