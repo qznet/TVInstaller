@@ -1,0 +1,5 @@
+# TVInstallerFromGitHub 内置仓库列表
+# 格式：owner/repo = 可选描述
+bigsinger/TVInstaller = TV 安装器项目
+TeamNewPipe/NewPipe = 开源 Android 视频客户端
+F-Droid/F-Droid = F-Droid 官方客户端

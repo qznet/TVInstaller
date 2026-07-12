@@ -1,0 +1,2 @@
+-keepattributes Signature,InnerClasses,EnclosingMethod
+-dontwarn org.codehaus.mojo.animal_sniffer.*

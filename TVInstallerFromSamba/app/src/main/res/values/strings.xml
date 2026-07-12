@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SMB 安装助手</string>
-    <string name="scan_title">SMB 安装助手</string>
+    <string name="app_name">TVInstallerFromSamba</string>
+    <string name="scan_title">TVInstallerFromSamba</string>
     <string name="scan_running">正在搜索局域网 SMB 服务...</string>
     <string name="scan_empty">未发现 SMB 服务，请检查设备是否在同一局域网</string>
     <string name="manual_ip">手动添加 IP</string>

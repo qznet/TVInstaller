@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- GitHub dark theme tokens from the approved specification. -->
+    <color name="bg_app">#0D1117</color>
+    <color name="bg_panel">#161B22</color>
+    <color name="bg_panel_elevated">#21262D</color>
+    <color name="bg_panel_focused">#1C2333</color>
+    <color name="border">#30363D</color>
+    <color name="text_primary">#E6EDF3</color>
+    <color name="text_bright">#F0F6FC</color>
+    <color name="text_secondary">#8B949E</color>
+    <color name="text_muted">#6E7681</color>
+    <color name="focus">#58A6FF</color>
+    <color name="action_green">#238636</color>
+    <color name="action_green_pressed">#2EA043</color>
+    <color name="warning">#D29922</color>
+    <color name="danger">#F85149</color>
+    <color name="browser_background">#FFFFFF</color>
+    <color name="browser_scrim">#F6F8FA</color>
+    <color name="transparent">#00000000</color>
+</resources>

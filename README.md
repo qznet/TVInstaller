@@ -1,4 +1,4 @@
-# SMB Installer
+# TVInstallerFromSamba
 
 把安卓电视变成「免 U 盘装 App」的利器——通过局域网 Samba 服务浏览并安装 APK。
 
@@ -68,11 +68,11 @@ adb install SMBInstaller.apk
 ## 项目结构
 
 ```
-TVInstaller/
+TVInstallerFromSamba/
 ├── doc/
 │   ├── TVInstaller-spec.md          # 技术规格书
 │   └── TVInstaller-prototype.html   # 交互原型 (TV/Phone)
-├── TVInstaller/
+├── TVInstallerFromSamba/
 │   └── app/src/main/java/com/bigsinger/tvinstaller/
 │       ├── ui/
 │       │   ├── ScanActivity.java      # 主页面：设备扫描与列表
@@ -105,7 +105,7 @@ TVInstaller/
 
 ## 构建
 
-用 Android Studio 打开 `TVInstaller/` 目录，Gradle sync 后直接 Build。
+用 Android Studio 打开 `TVInstallerFromSamba/` 目录，Gradle sync 后直接 Build。
 
 ## License
 

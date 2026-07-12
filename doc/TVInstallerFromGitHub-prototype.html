@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GitHub TV · 原型</title>
+  <style>
+    /* TV 全局焦点 & 遥控器风格 */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* TV 模拟外壳 —— 带遥控器提示 */
+    .tv-shell {
+      max-width: 1280px;
+      width: 100%;
+      background: #161b22;
+      border-radius: 48px;
+      padding: 24px 24px 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.04);
+      position: relative;
+    }
+
+    /* 状态栏 / 头部 */
+    .tv-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 8px 16px 8px;
+      border-bottom: 1px solid #30363d;
+    }
+
+    .app-title {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #f0f6fc, #58a6ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .remote-hint {
+      display: flex;
+      gap: 12px;
+      background: #21262d;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 14px;
+      color: #8b949e;
+      border: 1px solid #30363d;
+    }
+
+    .remote-hint span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .remote-hint i {
+      font-style: normal;
+      background: #30363d;
+      padding: 0 8px;
+      border-radius: 12px;
+      color: #c9d1d9;
+    }
+
+    /* 双栏布局：左侧列表 + 右侧预览（内嵌浏览器模拟） */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+      margin-top: 18px;
+      height: 600px;
+    }
+
+    /* 左侧面板：数据源 + 列表 */
+    .left-panel {
+      background: #0d1117;
+      border-radius: 24px;
+      border: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-toolbar {
+      padding: 16px 18px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      border-bottom: 1px solid #21262d;
+      background: #161b22;
+    }
+
+    .btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+      padding: 8px 18px;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: default; /* 原型不可点击 */
+      transition: 0.1s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 0 0 0 rgba(88,166,255,0);
+    }
+
+    .btn-primary {
+      background: #238636;
+      border-color: #2ea043;
+      color: white;
+    }
+
+    .btn-primary i { font-style: normal; }
+
+    .btn-focus {
+      outline: 3px solid #58a6ff;
+      outline-offset: 2px;
+      border-color: #58a6ff;
+    }
+
+    .btn-secondary {
+      background: #1f2937;
+      border-color: #4b5563;
+    }
+
+    .repo-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 12px 16px;
+    }
+
+    .repo-item {
+      background: #161b22;
+      border-radius: 16px;
+      padding: 14px 18px;
+      margin-bottom: 10px;
+      border-left: 4px solid #30363d;
+      transition: 0.08s linear;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .repo-item.focused {
+      border-left-color: #58a6ff;
+      background: #1c2333;
+      outline: 2px solid #58a6ff;
+      outline-offset: 2px;
+    }
+
+    .repo-name {
+      font-size: 18px;
+      font-weight: 500;
+      color: #f0f6fc;
+    }
+
+    .repo-desc {
+      font-size: 14px;
+      color: #8b949e;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .repo-desc .badge {
+      background: #21262d;
+      padding: 0 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      color: #c9d1d9;
+    }
+
+    .repo-meta {
+      font-size: 13px;
+      color: #6e7681;
+      margin-top: 2px;
+      display: flex;
+      gap: 12px;
+    }
+
+    .repo-meta span {
+      background: #161b22;
+      padding: 2px 10px;
+      border-radius: 20px;
+      border: 1px solid #30363d;
+    }
+
+    /* 右侧：内嵌浏览器模拟 (iframe 模拟) */
+    .right-panel {
+      background: #0d1117;
+      border-radius: 24px;
+      border: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .browser-toolbar {
+      padding: 12px 18px;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .browser-url {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 30px;
+      padding: 6px 18px;
+      color: #8b949e;
+      font-size: 14px;
+      flex: 1;
+      min-width: 140px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .browser-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .browser-actions .btn {
+      padding: 4px 12px;
+      font-size: 13px;
+    }
+
+    .browser-view {
+      flex: 1;
+      background: #ffffff;
+      border-radius: 0 0 24px 24px;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      min-height: 300px;
+    }
+
+    /* 模拟网页内容 (github 风格) */
+    .mock-browser-content {
+      width: 100%;
+      height: 100%;
+      background: #f6f8fa;
+      color: #24292f;
+      border-radius: 16px;
+      padding: 16px 20px;
+      overflow-y: auto;
+      font-size: 14px;
+      box-shadow: inset 0 0 0 1px #d0d7de;
+    }
+
+    .mock-browser-content .file-line {
+      padding: 6px 0;
+      border-bottom: 1px solid #d0d7de;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mock-browser-content .file-line .icon {
+      font-size: 18px;
+    }
+
+    .mock-browser-content .file-line .name {
+      font-weight: 500;
+      color: #0969da;
+    }
+
+    .mock-browser-content .file-line .size {
+      color: #57606a;
+      font-size: 13px;
+      margin-left: auto;
+    }
+
+    .apk-highlight {
+      background: #ddf4ff;
+      border-left: 4px solid #0969da;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .apk-highlight .btn {
+      background: #2da44e;
+      border: none;
+      color: white;
+      padding: 4px 16px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+
+    /* 底部提示 */
+    .footer-hint {
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      color: #6e7681;
+      font-size: 14px;
+      padding: 0 8px;
+      border-top: 1px solid #21262d;
+      padding-top: 16px;
+    }
+
+    .key-tag {
+      background: #21262d;
+      padding: 2px 14px;
+      border-radius: 30px;
+      border: 1px solid #30363d;
+    }
+
+    /* 滚动条 */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0d1117;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #30363d;
+      border-radius: 12px;
+    }
+
+    /* focus 模拟 */
+    .focusable {
+      transition: all 0.05s ease;
+    }
+
+    .focusable:focus-visible {
+      outline: 3px solid #58a6ff;
+      outline-offset: 2px;
+    }
+
+    /* 响应式 */
+    @media (max-width: 800px) {
+      .main-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .right-panel {
+        min-height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="tv-shell">
+  <!-- 头部 -->
+  <div class="tv-header">
+    <div class="app-title">📦 GitHub TV</div>
+    <div class="remote-hint">
+      <span>⬆⬇⬅➡</span>
+      <span><i>OK</i> 选择</span>
+      <span><i>MENU</i> 收藏</span>
+      <span><i>HOME</i> 回到列表</span>
+    </div>
+  </div>
+
+  <!-- 主体 -->
+  <div class="main-grid">
+    <!-- 左侧列表 -->
+    <div class="left-panel">
+      <div class="panel-toolbar">
+        <button class="btn btn-primary focusable" tabindex="0">🔄 同步</button>
+        <button class="btn btn-secondary focusable" tabindex="0">⭐ 收藏</button>
+        <span style="flex:1"></span>
+        <span style="color:#6e7681;font-size:13px;background:#21262d;padding:0 12px;border-radius:30px;">预配置 · 2</span>
+      </div>
+      <div class="repo-list">
+        <!-- 预置数据源 (模拟) -->
+        <div class="repo-item focused" tabindex="0">
+          <div class="repo-name">user1/awesome-apk</div>
+          <div class="repo-desc">
+            <span>📱 精选安卓工具</span>
+            <span class="badge">预配置</span>
+          </div>
+          <div class="repo-meta">
+            <span>⭐ 1.2k</span>
+            <span>📦 release</span>
+          </div>
+        </div>
+        <div class="repo-item" tabindex="0">
+          <div class="repo-name">devteam/tv-utils</div>
+          <div class="repo-desc">
+            <span>📺 TV 专用工具集</span>
+            <span class="badge">预配置</span>
+          </div>
+          <div class="repo-meta">
+            <span>⭐ 340</span>
+            <span>📁 /apk</span>
+          </div>
+        </div>
+        <div class="repo-item" tabindex="0">
+          <div class="repo-name">mike/games-repo</div>
+          <div class="repo-desc">
+            <span>🎮 怀旧游戏</span>
+            <span class="badge">收藏</span>
+          </div>
+          <div class="repo-meta">
+            <span>⭐ 89</span>
+            <span>📦 release</span>
+          </div>
+        </div>
+        <div class="repo-item" tabindex="0">
+          <div class="repo-name">opensource/reader</div>
+          <div class="repo-desc">
+            <span>📖 阅读器 · 无APK</span>
+            <span class="badge">收藏</span>
+          </div>
+          <div class="repo-meta">
+            <span>⭐ 2.1k</span>
+            <span>📁 /docs</span>
+          </div>
+        </div>
+      </div>
+      <div style="padding: 8px 18px 14px; color: #6e7681; font-size: 13px; border-top:1px solid #21262d;">
+        ⬆⬇ 切换 · OK 进入仓库
+      </div>
+    </div>
+
+    <!-- 右侧浏览器模拟 -->
+    <div class="right-panel">
+      <div class="browser-toolbar">
+        <div class="browser-url">github.com/user1/awesome-apk</div>
+        <div class="browser-actions">
+          <button class="btn focusable" tabindex="0" style="background:#1f2937;">⬅ 返回</button>
+          <button class="btn focusable" tabindex="0" style="background:#1f2937;">↻</button>
+        </div>
+      </div>
+      <div class="browser-view">
+        <div class="mock-browser-content">
+          <!-- 模拟文件列表 -->
+          <div style="display:flex; gap: 10px; margin-bottom: 12px; color:#57606a; font-size:13px;">
+            <span>📁 <strong>awesome-apk</strong></span>
+            <span>main</span>
+            <span style="margin-left:auto;">updated 2d ago</span>
+          </div>
+          <!-- 文件条目 带APK高亮 -->
+          <div class="file-line">
+            <span class="icon">📄</span>
+            <span class="name">README.md</span>
+            <span class="size">2.4 KB</span>
+          </div>
+          <div class="file-line">
+            <span class="icon">📁</span>
+            <span class="name">app/</span>
+            <span class="size">—</span>
+          </div>
+          <div class="file-line">
+            <span class="icon">📁</span>
+            <span class="name">release/</span>
+            <span class="size">—</span>
+          </div>
+          <!-- APK 条目 (可下载) -->
+          <div class="apk-highlight">
+            <span style="font-size:20px;">📦</span>
+            <span style="font-weight:600; color:#0550ae;">app-release-1.2.0.apk</span>
+            <span style="color:#57606a; font-size:13px;">12.4 MB</span>
+            <span style="flex:1;"></span>
+            <button class="btn focusable" tabindex="0" style="background:#2da44e; border: none; color:white; padding:4px 20px; border-radius:30px;">⬇ OK 下载</button>
+          </div>
+          <div class="file-line">
+            <span class="icon">📄</span>
+            <span class="name">build.gradle</span>
+            <span class="size">1.1 KB</span>
+          </div>
+          <div class="file-line">
+            <span class="icon">📄</span>
+            <span class="name">release-notes.md</span>
+            <span class="size">0.8 KB</span>
+          </div>
+          <!-- 模拟release区块 -->
+          <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #d0d7de;">
+            <div style="font-weight:600; color:#24292f;">🚀 Releases</div>
+            <div style="display:flex; gap:20px; margin-top: 8px; background:#f6f8fa; padding: 8px 12px; border-radius:12px; border:1px solid #d0d7de;">
+              <span>v1.2.0</span>
+              <span style="color:#57606a;">latest</span>
+              <span style="margin-left:auto; background:#ddf4ff; padding:0 12px; border-radius:30px;">📦 app-release.apk</span>
+            </div>
+          </div>
+          <!-- 说明文字 -->
+          <div style="margin-top: 18px; color:#57606a; font-size: 13px; border-top: 1px solid #d0d7de; padding-top: 12px;">
+            ⬆⬇ 浏览文件 · OK 下载APK · MENU 收藏此仓库
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部 遥控器操作说明 -->
+  <div class="footer-hint">
+    <div><span class="key-tag">⬆⬇</span> 列表/文件切换  <span class="key-tag">➡</span> 进入文件夹/Release  <span class="key-tag">⬅</span> 返回上层</div>
+    <div><span class="key-tag">OK</span> 下载APK / 打开文件  <span class="key-tag">MENU</span> 收藏当前仓库  <span class="key-tag">HOME</span> 跳转至列表</div>
+  </div>
+</div>
+
+<!-- 简单的焦点管理模拟 (仅用于原型交互展示) -->
+<script>
+  (function() {
+    // 使所有带 tabindex 的元素支持方向键模拟 (仅演示)
+    const focusables = Array.from(document.querySelectorAll('.focusable, .repo-item, .btn, [tabindex="0"]'));
+    let currentIndex = 0;
+
+    // 加一个初始焦点
+    if (focusables.length) {
+      focusables[0].classList.add('focused');
+      focusables[0].focus();
+    }
+
+    // 方向键模拟 (只针对原型展示)
+    document.addEventListener('keydown', (e) => {
+      const key = e.key;
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Home', 'Menu'].includes(key)) return;
+      e.preventDefault();
+
+      const current = document.activeElement;
+      if (!current || !current.matches('.focusable, .repo-item, .btn, [tabindex="0"]')) return;
+
+      // 上下左右移动 (简易)
+      if (key === 'ArrowDown' || key === 'ArrowUp') {
+        const list = current.closest('.repo-list') || current.closest('.left-panel') || document;
+        const items = Array.from(list.querySelectorAll('.repo-item, .btn, .focusable'));
+        const idx = items.indexOf(current);
+        if (idx !== -1) {
+          const nextIdx = key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+          items[nextIdx]?.focus();
+          items[nextIdx]?.classList.add('focused');
+          items.forEach((el, i) => { if (i !== nextIdx) el.classList.remove('focused'); });
+        }
+      }
+
+      // 左右: 模拟进出目录 (右侧变化)
+      if (key === 'ArrowRight') {
+        // 表示进入目录/release，更新右侧浏览器内容 (原型: 修改URL及APK高亮)
+        const urlBar = document.querySelector('.browser-url');
+        if (urlBar) {
+          if (urlBar.textContent.includes('awesome-apk')) {
+            urlBar.textContent = 'github.com/user1/awesome-apk/tree/main/release';
+          } else {
+            urlBar.textContent = 'github.com/user1/awesome-apk/tree/main/release';
+          }
+        }
+        // 同时高亮 APK 区域
+        const apk = document.querySelector('.apk-highlight');
+        if (apk) {
+          apk.style.background = '#b6e3ff';
+          apk.style.borderLeftColor = '#0969da';
+        }
+      }
+      if (key === 'ArrowLeft') {
+        const urlBar = document.querySelector('.browser-url');
+        if (urlBar) {
+          urlBar.textContent = 'github.com/user1/awesome-apk';
+        }
+        const apk = document.querySelector('.apk-highlight');
+        if (apk) {
+          apk.style.background = '#ddf4ff';
+          apk.style.borderLeftColor = '#0969da';
+        }
+      }
+
+      // OK 模拟下载/安装
+      if (key === 'Enter') {
+        const apkBtn = document.querySelector('.apk-highlight .btn');
+        if (apkBtn && document.activeElement === apkBtn) {
+          alert('📲 模拟下载 APK 并触发安装流程 (TV 安装)');
+        } else {
+          // 模拟打开文件/进入
+          const target = document.activeElement;
+          if (target && target.matches('.repo-item')) {
+            const name = target.querySelector('.repo-name')?.textContent || '仓库';
+            alert(`进入仓库: ${name}\n(模拟内嵌浏览器导航)`);
+            // 更新URL
+            const urlBar = document.querySelector('.browser-url');
+            if (urlBar) urlBar.textContent = `github.com/${name}`;
+          } else {
+            alert('OK: 预览文件或下载APK');
+          }
+        }
+      }
+
+      // HOME 跳转至列表
+      if (key === 'Home') {
+        const firstRepo = document.querySelector('.repo-item');
+        if (firstRepo) {
+          firstRepo.focus();
+          firstRepo.classList.add('focused');
+          document.querySelectorAll('.repo-item').forEach(el => {
+            if (el !== firstRepo) el.classList.remove('focused');
+          });
+        }
+        // 重置url
+        const urlBar = document.querySelector('.browser-url');
+        if (urlBar) urlBar.textContent = 'github.com/user1/awesome-apk';
+        alert('🏠 回到仓库列表');
+      }
+
+      // MENU 收藏
+      if (key === 'Menu') {
+        const active = document.activeElement;
+        let repoName = '当前仓库';
+        if (active && active.matches('.repo-item')) {
+          repoName = active.querySelector('.repo-name')?.textContent || '仓库';
+        }
+        alert(`⭐ 收藏仓库: ${repoName}\n(已保存至本地收藏列表)`);
+      }
+    });
+
+    // 鼠标点击同步焦点样式
+    document.querySelectorAll('.repo-item, .btn, .focusable').forEach(el => {
+      el.addEventListener('click', function() {
+        document.querySelectorAll('.repo-item').forEach(r => r.classList.remove('focused'));
+        this.classList.add('focused');
+        this.focus();
+      });
+    });
+  })();
+</script>
+</body>
+</html>

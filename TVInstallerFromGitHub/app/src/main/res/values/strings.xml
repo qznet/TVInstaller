@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TV Installer from GitHub</string>
+    <string name="header_title">GitHub TV</string>
+    <string name="preset_url" translatable="false">https://raw.githubusercontent.com/bigsinger/TVInstaller/main/TVInstallerFromGitHub/data/preset.txt</string>
+
+    <string name="sync">同步</string>
+    <string name="syncing">正在同步…</string>
+    <string name="sync_success">同步完成</string>
+    <string name="sync_failed">同步失败，请检查网络</string>
+    <string name="favorite">收藏</string>
+    <string name="remove_favorite">取消收藏</string>
+    <string name="favorite_added">已添加收藏</string>
+    <string name="favorite_removed">已取消收藏</string>
+    <string name="preset_badge">预配置</string>
+    <string name="favorite_badge">收藏</string>
+    <string name="preset_count_format">预配置 · %1$d</string>
+    <string name="favorite_section">收藏</string>
+    <string name="repository_open_hint">OK 进入仓库</string>
+    <string name="repository_item_content_description">%1$s，%2$s，按 OK 进入仓库</string>
+    <string name="repository_list_hint">方向键切换仓库 · OK 进入</string>
+
+    <string name="repository_list">仓库列表</string>
+    <string name="back">返回</string>
+    <string name="refresh">刷新</string>
+    <string name="default_repository_url" translatable="false">github.com</string>
+    <string name="browser_loading">正在加载 GitHub…</string>
+    <string name="browser_error">页面加载失败，请检查网络</string>
+
+    <string name="download_idle">等待下载</string>
+    <string name="download_start_format">开始下载：%1$s</string>
+    <string name="download_progress_format">正在下载：%1$s · %2$d%%</string>
+    <string name="download_complete_install">下载完成，是否安装？</string>
+    <string name="download_failed">下载失败，请重试</string>
+    <string name="download_retry">重试下载</string>
+    <string name="download_failed_retry_format">%1$s · %2$s</string>
+    <string name="installing">正在打开系统安装器…</string>
+    <string name="install_success">安装成功</string>
+    <string name="network_error">网络异常</string>
+    <string name="storage_insufficient">存储空间不足</string>
+    <string name="unknown_sources_title">允许安装未知来源</string>
+    <string name="unknown_sources_message">请允许 TV Installer from GitHub 安装未知来源应用，然后返回继续安装。</string>
+    <string name="permission_open_settings">打开设置</string>
+    <string name="cancel">取消</string>
+    <string name="install">安装</string>
+
+    <string name="remote_header_hint">方向键 导航   OK 选择   BACK 返回</string>
+    <string name="remote_footer_hint">方向键：列表/文件切换    OK：进入/下载 APK    MENU：收藏    BACK：返回上级</string>
+    <string name="download_panel_content_description">APK 下载状态</string>
+</resources>

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #fff; color: #24292f; }
+    body { padding: 18px 22px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .head { display: flex; gap: 10px; align-items: center; color: #57606a; margin-bottom: 12px; }
+    .head strong { color: #24292f; }
+    .head .updated { margin-left: auto; }
+    .row { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 6px 8px; border-bottom: 1px solid #d0d7de; }
+    .name { color: #0969da; font-weight: 600; }
+    .size { margin-left: auto; color: #57606a; font-size: 13px; }
+    .apk { margin: 8px 0; padding: 9px 12px; border-left: 4px solid #0969da; border-radius: 8px; background: #ddf4ff; }
+    .apk .name { color: #0550ae; }
+    .download { margin-left: auto; padding: 5px 18px; border-radius: 24px; background: #2da44e; color: #fff; font-weight: 700; }
+    .release { margin-top: 18px; padding-top: 14px; border-top: 1px solid #d0d7de; }
+    .release-line { display: flex; gap: 18px; margin-top: 9px; padding: 9px 12px; border: 1px solid #d0d7de; border-radius: 10px; background: #f6f8fa; }
+    .asset { margin-left: auto; padding: 1px 12px; border-radius: 20px; background: #ddf4ff; }
+    .hint { margin-top: 20px; padding-top: 13px; border-top: 1px solid #d0d7de; color: #57606a; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="head"><span>▣</span><strong>GitHub 仓库预览</strong><span>main</span><span class="updated">选择左侧仓库后开始浏览</span></div>
+  <div class="row"><span>▤</span><span class="name">README.md</span><span class="size">2.4 KB</span></div>
+  <div class="row"><span>▣</span><span class="name">app/</span><span class="size">—</span></div>
+  <div class="row"><span>▣</span><span class="name">release/</span><span class="size">—</span></div>
+  <div class="row apk"><span>▰</span><span class="name">app-release.apk</span><span class="size">12.4 MB</span><span class="download">OK 下载</span></div>
+  <div class="row"><span>▤</span><span class="name">build.gradle</span><span class="size">1.1 KB</span></div>
+  <div class="release"><strong>Releases</strong><div class="release-line"><span>v1.0.0</span><span style="color:#57606a">latest</span><span class="asset">app-release.apk</span></div></div>
+  <div class="hint">方向键浏览 GitHub 页面 · OK 打开链接或下载 APK · MENU 收藏当前仓库</div>
+</body>
+</html>
