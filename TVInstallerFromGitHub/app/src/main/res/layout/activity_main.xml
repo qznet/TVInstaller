@@ -2,20 +2,15 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_app"
-    android:padding="6dp">
+    android:background="@color/bg_app">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@drawable/bg_shell"
-        android:orientation="vertical"
-        android:paddingLeft="@dimen/page_padding_horizontal"
-        android:paddingTop="@dimen/page_padding_vertical"
-        android:paddingRight="@dimen/page_padding_horizontal"
-        android:paddingBottom="@dimen/page_padding_vertical">
+        android:background="@color/bg_panel"
+        android:orientation="vertical">
 
-        <!-- Header: app identity plus a compact, non-interactive remote guide. -->
+        <!-- Header contains only app identity; usage guidance is shown in the start page. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="@dimen/header_height"
@@ -44,15 +39,6 @@
                     android:textColor="@color/text_muted"
                     android:textSize="@dimen/subtitle_text" />
             </LinearLayout>
-
-            <TextView
-                style="@style/Text.GithubTv.Hint"
-                android:layout_width="300dp"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_remote_hint"
-                android:gravity="end|center_vertical"
-                android:maxLines="2"
-                android:text="@string/remote_header_hint" />
         </LinearLayout>
 
         <View
@@ -97,7 +83,7 @@
                         android:layout_width="wrap_content"
                         android:layout_marginStart="8dp"
                         android:nextFocusLeft="@id/syncButton"
-                        android:nextFocusRight="@id/browserHomeButton"
+                        android:nextFocusRight="@id/browserRepoButton"
                         android:text="@string/favorite" />
 
                     <Space
@@ -169,12 +155,23 @@
                         android:text="@string/default_repository_url" />
 
                     <Button
-                        android:id="@+id/browserHomeButton"
+                        android:id="@+id/browserRepoButton"
                         style="@style/Widget.GithubTv.Button.Compact"
                         android:layout_width="wrap_content"
                         android:nextFocusLeft="@id/favoriteButton"
+                        android:nextFocusRight="@id/browserHomeButton"
+                        android:nextFocusDown="@id/webView"
+                        android:text="@string/repository" />
+
+                    <Button
+                        android:id="@+id/browserHomeButton"
+                        style="@style/Widget.GithubTv.Button.Compact"
+                        android:layout_width="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:nextFocusLeft="@id/browserRepoButton"
                         android:nextFocusRight="@id/browserBackButton"
-                        android:text="@string/repository_list" />
+                        android:nextFocusDown="@id/webView"
+                        android:text="@string/releases" />
 
                     <Button
                         android:id="@+id/browserBackButton"
@@ -183,6 +180,7 @@
                         android:layout_marginStart="8dp"
                         android:nextFocusLeft="@id/browserHomeButton"
                         android:nextFocusRight="@id/browserRefreshButton"
+                        android:nextFocusDown="@id/webView"
                         android:text="@string/back" />
 
                     <Button
@@ -191,6 +189,7 @@
                         android:layout_width="wrap_content"
                         android:layout_marginStart="8dp"
                         android:nextFocusLeft="@id/browserBackButton"
+                        android:nextFocusDown="@id/webView"
                         android:text="@string/refresh" />
                 </LinearLayout>
 

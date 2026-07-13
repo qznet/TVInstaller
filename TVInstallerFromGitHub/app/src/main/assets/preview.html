@@ -6,30 +6,29 @@
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: #fff; color: #24292f; }
-    body { padding: 18px 22px; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-    .head { display: flex; gap: 10px; align-items: center; color: #57606a; margin-bottom: 12px; }
-    .head strong { color: #24292f; }
-    .head .updated { margin-left: auto; }
-    .row { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 6px 8px; border-bottom: 1px solid #d0d7de; }
-    .name { color: #0969da; font-weight: 600; }
-    .size { margin-left: auto; color: #57606a; font-size: 13px; }
-    .apk { margin: 8px 0; padding: 9px 12px; border-left: 4px solid #0969da; border-radius: 8px; background: #ddf4ff; }
-    .apk .name { color: #0550ae; }
-    .download { margin-left: auto; padding: 5px 18px; border-radius: 24px; background: #2da44e; color: #fff; font-weight: 700; }
-    .release { margin-top: 18px; padding-top: 14px; border-top: 1px solid #d0d7de; }
-    .release-line { display: flex; gap: 18px; margin-top: 9px; padding: 9px 12px; border: 1px solid #d0d7de; border-radius: 10px; background: #f6f8fa; }
-    .asset { margin-left: auto; padding: 1px 12px; border-radius: 20px; background: #ddf4ff; }
-    .hint { margin-top: 20px; padding-top: 13px; border-top: 1px solid #d0d7de; color: #57606a; font-size: 13px; }
+    body { padding: 28px 34px; font: 16px/1.65 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    h1 { margin: 0 0 8px; font-size: 26px; }
+    .lead { margin: 0 0 26px; color: #57606a; }
+    .step { display: flex; gap: 16px; margin: 12px 0; padding: 16px 18px; border: 1px solid #d0d7de; border-radius: 12px; background: #f6f8fa; }
+    .number { flex: 0 0 32px; height: 32px; border-radius: 50%; background: #0969da; color: #fff; text-align: center; font-weight: 700; line-height: 32px; }
+    .step strong { display: block; color: #0969da; }
+    .keys { margin-top: 26px; padding: 18px; border-left: 4px solid #2da44e; border-radius: 8px; background: #dafbe1; }
+    .keys div + div { margin-top: 8px; }
+    kbd { display: inline-block; min-width: 42px; padding: 1px 8px; border: 1px solid #afb8c1; border-bottom-width: 2px; border-radius: 5px; background: #fff; text-align: center; font: 700 13px system-ui; }
   </style>
 </head>
 <body>
-  <div class="head"><span>▣</span><strong>GitHub 仓库预览</strong><span>main</span><span class="updated">选择左侧仓库后开始浏览</span></div>
-  <div class="row"><span>▤</span><span class="name">README.md</span><span class="size">2.4 KB</span></div>
-  <div class="row"><span>▣</span><span class="name">app/</span><span class="size">—</span></div>
-  <div class="row"><span>▣</span><span class="name">release/</span><span class="size">—</span></div>
-  <div class="row apk"><span>▰</span><span class="name">app-release.apk</span><span class="size">12.4 MB</span><span class="download">OK 下载</span></div>
-  <div class="row"><span>▤</span><span class="name">build.gradle</span><span class="size">1.1 KB</span></div>
-  <div class="release"><strong>Releases</strong><div class="release-line"><span>v1.0.0</span><span style="color:#57606a">latest</span><span class="asset">app-release.apk</span></div></div>
-  <div class="hint">方向键浏览 GitHub 页面 · OK 打开链接或下载 APK · MENU 收藏当前仓库</div>
+  <h1>TV Installer from GitHub</h1>
+  <p class="lead">从 GitHub 仓库的 Release 页面下载 APK，并调用系统安装器完成安装。</p>
+
+  <div class="step"><span class="number">1</span><div><strong>选择仓库</strong>在左侧列表用方向键选择目标仓库，按 OK 进入右侧操作区。</div></div>
+  <div class="step"><span class="number">2</span><div><strong>选择访问位置</strong>在右侧选择 <b>repo</b> 打开仓库首页，或选择 <b>release</b> 直接打开版本发布页。</div></div>
+  <div class="step"><span class="number">3</span><div><strong>浏览并下载</strong>按下键进入网页，用方向键移动网页焦点；选中 APK 后按 OK 开始下载。</div></div>
+
+  <div class="keys">
+    <div><kbd>MENU</kbd> 收藏或取消收藏当前仓库</div>
+    <div><kbd>BACK</kbd> 返回网页上一页；没有历史时回到使用说明</div>
+    <div><kbd>刷新</kbd> 重新加载当前网页</div>
+  </div>
 </body>
 </html>

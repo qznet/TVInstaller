@@ -81,6 +81,7 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
 
     private Button syncButton;
     private Button favoriteButton;
+    private Button browserRepoButton;
     private Button browserHomeButton;
     private Button browserBackButton;
     private Button browserRefreshButton;
@@ -154,6 +155,7 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
     private void bindViews() {
         syncButton = findViewById(R.id.syncButton);
         favoriteButton = findViewById(R.id.favoriteButton);
+        browserRepoButton = findViewById(R.id.browserRepoButton);
         browserHomeButton = findViewById(R.id.browserHomeButton);
         browserBackButton = findViewById(R.id.browserBackButton);
         browserRefreshButton = findViewById(R.id.browserRefreshButton);
@@ -212,10 +214,16 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
                 toggleCurrentFavorite();
             }
         });
+        browserRepoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                openSelectedRepository(false);
+            }
+        });
         browserHomeButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                returnToRepositoryList();
+                openSelectedRepository(true);
             }
         });
         browserBackButton.setOnClickListener(new View.OnClickListener() {
@@ -446,13 +454,21 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         selectedRepository = item;
         repositoryAdapter.setSelectedItem(item);
         updateFavoriteButton();
-        // The local preview may still be rendering when the user immediately enters a
-        // repository after launch. Cancel it first so it cannot win the navigation race.
-        final String repositoryUrl = item.getUrl();
+        // Enter the browser toolbar first, so the user can choose repo or release.
+        browserRepoButton.requestFocus();
+    }
+
+    private void openSelectedRepository(boolean releases) {
+        if (currentRepository == null) {
+            return;
+        }
+        String repositoryUrl = currentRepository.getUrl();
+        if (releases) {
+            repositoryUrl += "/releases";
+        }
         webView.stopLoading();
         browserUrlText.setText(displayUrl(repositoryUrl));
         webView.loadUrl(repositoryUrl);
-        webView.requestFocus();
     }
 
     @Override

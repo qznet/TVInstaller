@@ -188,7 +188,7 @@ public final class RepositoryAdapter
 
             repoCard.setFocusable(true);
             repoCard.setClickable(true);
-            repoCard.setNextFocusRightId(R.id.browserHomeButton);
+            repoCard.setNextFocusRightId(R.id.browserRepoButton);
         }
     }
 }

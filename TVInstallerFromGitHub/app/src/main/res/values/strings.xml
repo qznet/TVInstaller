@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">TV Installer from GitHub</string>
     <string name="header_title">GitHub TV</string>
+    <string name="repository">repo</string>
+    <string name="releases">release</string>
     <string name="header_subtitle">浏览 GitHub 仓库，下载并安装 APK</string>
     <string name="preset_url" translatable="false">https://raw.githubusercontent.com/bigsinger/TVInstaller/refs/heads/main/data/config.txt</string>
 
