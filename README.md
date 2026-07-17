@@ -110,3 +110,10 @@ TVInstallerFromSamba/
 ## License
 
 基于 JCIFS-NG（GPLv2）构建，应用主体代码按 GPLv2 发布。
+
+
+# TVInstallerFromGitHub
+
+把安卓电视变成「免 U 盘装 App」的利器——通过 GitHub 浏览并安装 APK。
+
+![](./screenshot/2.png)
