@@ -1,5 +1,7 @@
 package com.bigsinger.tvinstaller.ui;
 
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -13,21 +15,16 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.FileProvider;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import com.bigsinger.tvinstaller.R;
-import com.bigsinger.tvinstaller.adapter.FileAdapter;
 import com.bigsinger.tvinstaller.data.DeviceHistoryStore;
 import com.bigsinger.tvinstaller.data.SmbEntry;
 import com.bigsinger.tvinstaller.net.SmbRepository;
@@ -35,11 +32,13 @@ import com.bigsinger.tvinstaller.security.CredentialStore;
 import com.bigsinger.tvinstaller.service.ApkDownloadService;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-public class FileListActivity extends AppCompatActivity {
+public class FileListActivity extends Activity {
     public static final String EXTRA_HOST = "extra_host";
     public static final String EXTRA_DEVICE_NAME = "extra_device_name";
     public static final String EXTRA_USERNAME = "extra_username";
@@ -48,20 +47,21 @@ public class FileListActivity extends AppCompatActivity {
 
     private final ArrayList<SmbEntry> entries = new ArrayList<SmbEntry>();
     private final SmbRepository repository = new SmbRepository();
+    private final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
 
     private String host;
     private String deviceName;
     private String username;
     private String password;
     private String currentPath = "";
-    private int loadedCount = 0;
+    private int loadedCount;
 
     private TextView fileTitle;
     private TextView pathText;
     private ProgressBar loadingBar;
     private Button loadMoreButton;
-    private RecyclerView fileRecycler;
-    private FileAdapter adapter;
+    private ScrollView fileScroll;
+    private LinearLayout fileList;
     private ProgressDialog downloadDialog;
     private File pendingInstallFile;
 
@@ -83,8 +83,8 @@ public class FileListActivity extends AppCompatActivity {
                 }
             } else if (ApkDownloadService.STATUS_ERROR.equals(status)) {
                 dismissDownloadDialog();
-                String error = intent.getStringExtra(ApkDownloadService.EXTRA_ERROR);
-                Toast.makeText(FileListActivity.this, error, Toast.LENGTH_LONG).show();
+                Toast.makeText(FileListActivity.this,
+                        intent.getStringExtra(ApkDownloadService.EXTRA_ERROR), Toast.LENGTH_LONG).show();
             }
         }
     };
@@ -109,18 +109,10 @@ public class FileListActivity extends AppCompatActivity {
         pathText = findViewById(R.id.pathText);
         loadingBar = findViewById(R.id.loadingBar);
         loadMoreButton = findViewById(R.id.loadMoreButton);
+        fileScroll = findViewById(R.id.fileScroll);
+        fileList = findViewById(R.id.fileList);
         Button backParentButton = findViewById(R.id.backParentButton);
         Button clearButton = findViewById(R.id.clearCredentialButton);
-
-        fileRecycler = findViewById(R.id.fileRecycler);
-        adapter = new FileAdapter(entries, new FileAdapter.Listener() {
-            @Override
-            public void onEntryClick(SmbEntry entry) {
-                openEntry(entry);
-            }
-        });
-        fileRecycler.setLayoutManager(new LinearLayoutManager(this));
-        fileRecycler.setAdapter(adapter);
 
         backParentButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -149,14 +141,18 @@ public class FileListActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        LocalBroadcastManager.getInstance(this).registerReceiver(downloadReceiver,
-                new IntentFilter(ApkDownloadService.ACTION_PROGRESS));
+        IntentFilter filter = new IntentFilter(ApkDownloadService.ACTION_PROGRESS);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(downloadReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(downloadReceiver, filter);
+        }
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(downloadReceiver);
+        unregisterReceiver(downloadReceiver);
     }
 
     @Override
@@ -179,10 +175,10 @@ public class FileListActivity extends AppCompatActivity {
         if (reset) {
             loadedCount = 0;
             entries.clear();
-            adapter.notifyDataSetChanged();
+            renderEntries();
         }
 
-        int offset = loadedCount;
+        final int offset = loadedCount;
         new AsyncTask<Void, Void, LoadResult>() {
             @Override
             protected LoadResult doInBackground(Void... voids) {
@@ -209,10 +205,9 @@ public class FileListActivity extends AppCompatActivity {
                     Toast.makeText(FileListActivity.this, readableListError(result.error), Toast.LENGTH_LONG).show();
                     return;
                 }
-                int start = entries.size();
                 entries.addAll(result.entries);
                 loadedCount = entries.size();
-                adapter.notifyItemRangeInserted(start, result.entries.size());
+                renderEntries();
                 loadMoreButton.setVisibility(result.hasMore ? View.VISIBLE : View.GONE);
                 new DeviceHistoryStore(FileListActivity.this).setLastPath(host, currentPath);
                 if (reset) {
@@ -223,6 +218,52 @@ public class FileListActivity extends AppCompatActivity {
                 }
             }
         }.execute();
+    }
+
+    private void renderEntries() {
+        fileList.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (final SmbEntry entry : entries) {
+            View item = inflater.inflate(R.layout.item_file, fileList, false);
+            TextView typeText = item.findViewById(R.id.typeText);
+            TextView nameText = item.findViewById(R.id.nameText);
+            TextView detailText = item.findViewById(R.id.detailText);
+            TextView actionText = item.findViewById(R.id.actionText);
+            typeText.setText(entry.isDirectory() ? "DIR" : "APK");
+            nameText.setText(stripTrailingSlash(entry.getName()));
+            detailText.setText(entry.isDirectory() ? "文件夹" : formatDetail(entry));
+            actionText.setText(entry.isDirectory() ? "打开" : "安装");
+            item.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    openEntry(entry);
+                }
+            });
+            fileList.addView(item);
+        }
+    }
+
+    private String formatDetail(SmbEntry entry) {
+        String time = entry.getModified() > 0 ? dateFormat.format(new Date(entry.getModified())) : "未知时间";
+        return time + " · " + formatSize(entry.getSize());
+    }
+
+    private String formatSize(long bytes) {
+        if (bytes <= 0) {
+            return "未知大小";
+        }
+        double value = bytes;
+        String[] units = {"B", "KB", "MB", "GB"};
+        int unit = 0;
+        while (value >= 1024 && unit < units.length - 1) {
+            value /= 1024;
+            unit++;
+        }
+        return String.format(Locale.getDefault(), "%.1f %s", value, units[unit]);
+    }
+
+    private String stripTrailingSlash(String value) {
+        return value != null && value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
     }
 
     private String readableListError(Exception error) {
@@ -237,10 +278,10 @@ public class FileListActivity extends AppCompatActivity {
         if (entry.isDirectory()) {
             currentPath = SmbRepository.childPath(currentPath, entry.getName());
             updateTitle();
-            loadEntries(true, false);
-            return;
+            loadEntries(true);
+        } else {
+            confirmInstall(entry);
         }
-        confirmInstall(entry);
     }
 
     private void goParent() {
@@ -250,11 +291,11 @@ public class FileListActivity extends AppCompatActivity {
         }
         currentPath = SmbRepository.parentPath(currentPath);
         updateTitle();
-        loadEntries(true, false);
+        loadEntries(true);
     }
 
     private void confirmInstall(SmbEntry entry) {
-        new AlertDialog.Builder(this)
+        AlertDialog installDialog = new AlertDialog.Builder(this)
                 .setTitle("安装应用")
                 .setMessage("确定安装 " + entry.getName() + " 吗？")
                 .setNegativeButton("取消", null)
@@ -262,14 +303,12 @@ public class FileListActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         showDownloadDialog(entry.getName());
-                        ApkDownloadService.start(FileListActivity.this,
-                                entry.getUrl(),
-                                username,
-                                password,
-                                entry.getName());
+                        ApkDownloadService.start(FileListActivity.this, entry.getUrl(), username, password, entry.getName());
                     }
                 })
-                .show();
+                .create();
+        installDialog.show();
+        styleDialogButtons(installDialog);
     }
 
     private void showDownloadDialog(String fileName) {
@@ -293,7 +332,7 @@ public class FileListActivity extends AppCompatActivity {
     private void launchInstaller(File apkFile) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !canInstallPackages()) {
             pendingInstallFile = apkFile;
-            new AlertDialog.Builder(this)
+            AlertDialog unknownSourceDialog = new AlertDialog.Builder(this)
                     .setTitle("允许安装未知应用")
                     .setMessage("系统禁止安装未知来源应用，请点击确认前往设置")
                     .setNegativeButton("取消", null)
@@ -305,15 +344,16 @@ public class FileListActivity extends AppCompatActivity {
                             startActivity(intent);
                         }
                     })
-                    .show();
+                    .create();
+            unknownSourceDialog.show();
+            styleDialogButtons(unknownSourceDialog);
             return;
         }
         launchInstallerInternal(apkFile);
     }
 
     private boolean canInstallPackages() {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O
-                || getPackageManager().canRequestPackageInstalls();
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O || getPackageManager().canRequestPackageInstalls();
     }
 
     private void launchInstallerInternal(File apkFile) {
@@ -321,7 +361,11 @@ public class FileListActivity extends AppCompatActivity {
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         Uri uri;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", apkFile);
+            uri = new Uri.Builder()
+                    .scheme("content")
+                    .authority(getPackageName() + ".fileprovider")
+                    .appendPath(apkFile.getName())
+                    .build();
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         } else {
             uri = Uri.fromFile(apkFile);
@@ -335,19 +379,30 @@ public class FileListActivity extends AppCompatActivity {
     }
 
     private void updateTitle() {
-        String name = TextUtils.isEmpty(deviceName) ? host : deviceName;
-        fileTitle.setText(name);
+        fileTitle.setText(TextUtils.isEmpty(deviceName) ? host : deviceName);
         pathText.setText(SmbRepository.buildUrl(host, currentPath));
     }
 
+    private void styleDialogButtons(AlertDialog dialog) {
+        Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negative = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        if (positive != null) {
+            positive.setBackgroundResource(R.drawable.bg_button_primary);
+            positive.setTextColor(getResources().getColor(R.color.text_primary));
+        }
+        if (negative != null) {
+            negative.setBackgroundResource(R.drawable.bg_button_secondary);
+            negative.setTextColor(getResources().getColor(R.color.text_primary));
+        }
+    }
+
     private void focusFileList() {
-        fileRecycler.post(new Runnable() {
+        fileScroll.post(new Runnable() {
             @Override
             public void run() {
-                fileRecycler.requestFocus();
-                View child = fileRecycler.getChildAt(0);
-                if (child != null) {
-                    child.requestFocus();
+                fileScroll.requestFocus();
+                if (fileList.getChildCount() > 0) {
+                    fileList.getChildAt(0).requestFocus();
                 }
             }
         });

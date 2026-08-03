@@ -12,7 +12,6 @@ android {
         targetSdk 34
         versionCode 1
         versionName '1.0.0'
-        multiDexEnabled true
     }
 
     compileOptions {
@@ -25,17 +24,22 @@ android {
             // Produces an installable local release APK. Use a production keystore
             // before distributing through an app store.
             signingConfig signingConfigs.debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    applicationVariants.all { variant ->
+        if (variant.buildType.name == 'release') {
+            variant.outputs.all { output ->
+                outputFileName = "TVInstallerFromSamba-release-${defaultConfig.versionName}.apk"
+            }
         }
     }
 }
 
 dependencies {
     implementation 'eu.agno3.jcifs:jcifs-ng:2.1.8'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.cardview:cardview:1.0.0'
-    implementation 'androidx.core:core:1.9.0'
-    implementation 'androidx.leanback:leanback:1.0.0'
-    implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.1.0'
-    implementation 'androidx.multidex:multidex:2.0.1'
-    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+    implementation 'org.slf4j:slf4j-nop:1.7.32'
 }

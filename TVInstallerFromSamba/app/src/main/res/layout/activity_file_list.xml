@@ -73,14 +73,21 @@
         android:indeterminate="true"
         android:visibility="gone" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/fileRecycler"
+    <ScrollView
+        android:id="@+id/fileScroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="@dimen/page_gap"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:focusable="true" />
+        android:focusable="true">
+
+        <LinearLayout
+            android:id="@+id/fileList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
 
     <Button
         android:id="@+id/loadMoreButton"

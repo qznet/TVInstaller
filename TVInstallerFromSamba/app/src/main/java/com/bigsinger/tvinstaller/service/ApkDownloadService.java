@@ -8,8 +8,6 @@ import android.util.Log;
 
 import com.bigsinger.tvinstaller.net.SmbRepository;
 
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -117,23 +115,26 @@ public class ApkDownloadService extends IntentService {
 
     private void sendProgress(int progress) {
         Intent intent = new Intent(ACTION_PROGRESS);
+        intent.setPackage(getPackageName());
         intent.putExtra(EXTRA_STATUS, STATUS_PROGRESS);
         intent.putExtra(EXTRA_PROGRESS, progress);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        sendBroadcast(intent);
     }
 
     private void sendComplete(File file) {
         Intent intent = new Intent(ACTION_PROGRESS);
+        intent.setPackage(getPackageName());
         intent.putExtra(EXTRA_STATUS, STATUS_COMPLETE);
         intent.putExtra(EXTRA_PROGRESS, 100);
         intent.putExtra(EXTRA_FILE_PATH, file.getAbsolutePath());
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        sendBroadcast(intent);
     }
 
     private void sendError(String error) {
         Intent intent = new Intent(ACTION_PROGRESS);
+        intent.setPackage(getPackageName());
         intent.putExtra(EXTRA_STATUS, STATUS_ERROR);
         intent.putExtra(EXTRA_ERROR, error);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+        sendBroadcast(intent);
     }
 }

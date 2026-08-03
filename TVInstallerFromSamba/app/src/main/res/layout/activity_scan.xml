@@ -77,15 +77,22 @@
             android:textSize="@dimen/sub_text" />
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/deviceRecycler"
+    <ScrollView
+        android:id="@+id/deviceScroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="@dimen/page_gap"
         android:layout_weight="1"
         android:clipToPadding="false"
         android:focusable="true"
-        android:nextFocusDown="@id/manualIpButton" />
+        android:nextFocusDown="@id/manualIpButton">
+
+        <LinearLayout
+            android:id="@+id/deviceList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
 
     <TextView
         android:id="@+id/emptyText"
@@ -110,7 +117,7 @@
             android:background="@drawable/bg_button_secondary"
             android:focusable="true"
             android:minWidth="132dp"
-            android:nextFocusUp="@id/deviceRecycler"
+            android:nextFocusUp="@id/deviceScroll"
             android:nextFocusRight="@id/refreshButton"
             android:text="@string/manual_ip"
             android:textColor="@color/text_primary"
@@ -125,7 +132,7 @@
             android:background="@drawable/bg_button_primary"
             android:focusable="true"
             android:minWidth="110dp"
-            android:nextFocusUp="@id/deviceRecycler"
+            android:nextFocusUp="@id/deviceScroll"
             android:nextFocusLeft="@id/manualIpButton"
             android:text="@string/refresh"
             android:textColor="@color/text_primary"

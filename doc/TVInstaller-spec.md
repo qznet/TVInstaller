@@ -15,7 +15,7 @@
 | **目标系统**     | Android 4.2 ~ Android 14 (API 34)                            |
 | **开发语言**     | **Java 8**                                                   |
 | **IDE**          | Android Studio (最新稳定版)                                  |
-| **第三方库限制** | 仅允许： • **JCIFS-NG** (SMB v2/v3客户端，GPLv2许可) • **AndroidX** (官方兼容库，用于TV Leanback) |
+| **第三方库限制** | 仅允许 **JCIFS-NG** (SMB v2/v3客户端，GPLv2许可)；界面全部使用 Android 平台原生 API，不引入 AndroidX、Kotlin 或 native/so 库。 |
 
 ------
 
@@ -34,8 +34,7 @@
 
 ### 2.3 UI渲染层
 
-- **TV端**：使用 **AndroidX Leanback** 库 (`androidx.leanback:leanback:1.0.0`)，适配遥控器焦点。
-- **手机端**：使用 **RecyclerView** + **CardView**，适配触屏滑动。
+- **TV/手机端**：使用平台原生 `Activity`、`ScrollView`、`LinearLayout` 和 `Button`，通过显式焦点顺序适配遥控器与触屏。
 - **响应式适配**：通过 `res/layout-sw600dp` 和 `res/layout-sw320dp` 分别适配TV(大屏)和手机(小屏)。
 
 ------
@@ -56,9 +55,9 @@
 
 | 项           | 详细设计                                                     |
 | :----------- | :----------------------------------------------------------- |
-| **认证流程** | 用户在主页点击设备卡片 → 查询本地 `SharedPreferences` 是否已有该IP的加密凭证。 • **有**：直接使用凭证尝试连接（`smb.connect()`）。成功则进入文件列表；失败则清除凭证并弹出登录框。 • **无**：弹出 `AlertDialog` 输入框（用户名 + 密码）。 |
+| **认证流程** | 用户在主页点击设备卡片 → 查询本地 `SharedPreferences` 是否已有该IP的加密凭证。 • **有**：直接使用凭证尝试连接（`smb.connect()`）。成功则进入文件列表；失败时保留凭证并重新弹出登录框，账号和密码均回填，用户可直接修改后重试。 • **无**：弹出 `AlertDialog` 输入框（用户名 + 密码）。 |
 | **密码加密** | 使用 `Cipher` (AES/CBC/PKCS5Padding)，密钥由 `SHA-256` 对设备ID+固定盐值生成。加密后存为 Base64 字符串。 |
-| **保存策略** | 登录成功时，弹窗询问 **"是否记住密码？"**，若勾选则加密存储。成功连接的设备写入历史设备缓存，用于下次启动时立即展示。用户可在文件列表页点击 **"清除凭证"** 删除当前设备保存的密码。 |
+| **保存策略** | 用户勾选 **"记住密码"** 后点击登录时立即加密保存，不以连接成功为前提。认证失败时重新弹出的登录框保留本次账号和密码；成功连接的设备写入历史设备缓存。用户可在文件列表页点击 **"清除凭证"** 删除当前设备保存的密码。 |
 | **超时重试** | 连接超时设定为 **5秒**。超时后Toast提示"连接超时，请检查网络或防火墙"。 |
 
 ### 3.3 模块三：文件浏览（仅展示APK）
@@ -78,7 +77,7 @@
 | **1. 点击APK**  | 点击文件列表中的 `.apk` 条目，弹出 `AlertDialog` 确认框："确定安装 [文件名] 吗？" |
 | **2. 后台下载** | 启动 **`IntentService`** (或 `Service` + `HandlerThread`) 进行下载，避免被Activity生命周期中断。 • 输入流：`smbFile.getInputStream()` • 输出流：`FileOutputStream` 写入外部缓存目录 (`/sdcard/Android/data/com.yourcompany/cache/download/`)。 |
 | **3. 进度反馈** | 通过 `LocalBroadcastManager` 发送进度广播，Activity接收后更新 **ProgressDialog** (或自定义进度条)。 |
-| **4. 调起安装** | 下载完成后，关闭进度对话框。构建 `Intent.ACTION_VIEW`，设置 `setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive")`。 **关键兼容处理**： • Android 7.0+：需使用 `FileProvider`，配置 `provider_paths.xml`。 • Android 8.0+：需声明 `REQUEST_INSTALL_PACKAGES` 权限，并检查 `getPackageManager().canRequestPackageInstalls()`，若不满足则跳转到"安装未知应用"设置页。 |
+| **4. 调起安装** | 下载完成后，关闭进度对话框。使用内置纯 Java `InstallFileProvider` 生成 APK content URI，并设置 `FLAG_GRANT_READ_URI_PERMISSION`；Android 8.0+ 检查 `canRequestPackageInstalls()`，必要时跳转到安装未知应用设置页。 |
 | **5. 安装结果** | 安装完成后系统会广播 `ACTION_PACKAGE_ADDED`，但无需处理。若安装失败，Toast提示错误信息。 |
 
 ------
@@ -89,7 +88,7 @@
 | :------------------ | :------------------------------------------- | :----------------------------------------------------------- |
 | **Android 4.2~4.4** | 无 `FileProvider`，直接使用 `Uri.fromFile()` | 通过 `Build.VERSION.SDK_INT` 判断，< 24 走旧逻辑。           |
 | **Android 5.0~6.0** | 动态权限申请 (存储权限)                      | 使用 `ActivityCompat.requestPermissions()` 申请 `WRITE_EXTERNAL_STORAGE`。 |
-| **Android 7.0+**    | 禁止 `file://` URI                           | 使用 `FileProvider` + `getUriForFile()`，并添加 `FLAG_GRANT_READ_URI_PERMISSION`。 |
+| **Android 7.0+**    | 禁止 `file://` URI                           | 使用内置 `InstallFileProvider` 生成 content URI，并添加 `FLAG_GRANT_READ_URI_PERMISSION`。 |
 | **Android 8.0+**    | 安装未知来源限制                             | 检查 `canRequestPackageInstalls()`，若不满足则跳转至 `Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES`。 |
 | **Android 10+**     | 分区存储限制                                 | 下载目录使用 `getExternalCacheDir()` (属于App私有目录，无需额外权限)。 |
 | **Android TV**      | 遥控器焦点                                   | 所有交互控件必须设置 `android:focusable="true"`，且使用 `android:nextFocusDown/Up/Left/Right` 明确焦点跳转顺序。主页扫描完成后，设备列表、"手动添加IP"、"刷新"按钮都必须可通过遥控器移动焦点并点击。进入文件列表页后，默认焦点应落在目录/文件列表首项，而不是顶部"返回上级"按钮。 |
@@ -102,8 +101,8 @@
 
 | 页面           | 布局文件                   | 核心控件                                                     |
 | :------------- | :------------------------- | :----------------------------------------------------------- |
-| **主页/扫描页** | `activity_scan.xml`        | `ProgressBar` + `TextView` (扫描状态/发现数量) + `RecyclerView` (适配器为 `DeviceAdapter`，展示历史设备和实时扫描结果) + `Button` (手动添加IP/刷新) |
-| **文件列表页** | `activity_file_list.xml`   | `RecyclerView` (适配器为 `FileAdapter`) + `Button` (返回上级/清除凭证) + `Button` (加载更多) |
+| **主页/扫描页** | `activity_scan.xml`        | `ProgressBar` + `TextView` (扫描状态/发现数量) + 平台 `ScrollView`/`LinearLayout` (展示历史设备和实时扫描结果) + `Button` (手动添加IP/刷新) |
+| **文件列表页** | `activity_file_list.xml`   | 平台 `ScrollView`/`LinearLayout` + `Button` (返回上级/清除凭证) + `Button` (加载更多) |
 | **登录弹窗**   | `dialog_login.xml`         | `EditText` (用户名/密码) + `CheckBox` (记住密码)             |
 
 ### 5.2 资源适配
@@ -127,7 +126,7 @@
 
 ## 7. 性能优化建议
 
-1. **内存优化**：`RecyclerView` 条目复用，避免在 `onBindViewHolder` 中频繁创建新对象。
+1. **体积优化**：release 构建启用 R8 和资源压缩，仅保留 JCIFS-NG 及其运行时依赖；必须保留 NTLM 认证按名称加载的 Bouncy Castle MD4 Provider 类，防止 R8 裁剪后认证失败。
 2. **线程管理**：SMB操作（列表、下载）全部在子线程 (`AsyncTask` 或 `Thread`) 执行，严禁在主线程进行网络I/O。
 3. **缓存策略**：APK下载完成后，若安装成功，自动删除缓存文件 (`apkFile.delete()`)；若安装失败，保留文件并提示用户手动处理。
 
@@ -141,7 +140,7 @@
 | **M2: 认证与浏览** | 3天  | JCIFS-NG集成 + 登录Dialog + 文件列表展示 | 能够连接海康智存并列出 `.apk` 文件。   |
 | **M3: 下载与安装** | 4天  | 下载Service + 进度条 + 系统安装调起      | 能够成功下载并弹出系统安装界面。       |
 | **M4: 兼容性测试** | 2天  | 在Android 4.2 ~ 14的真机/模拟器上测试    | 所有适配点通过，无Crash。              |
-| **M5: TV焦点优化** | 2天  | Leanback样式调整 + 遥控器按键映射        | 完全脱离鼠标，仅用遥控器可完成全流程。 |
+| **M5: TV焦点优化** | 2天  | 平台控件焦点顺序与遥控器按键映射        | 完全脱离鼠标，仅用遥控器可完成全流程。 |
 
 ------
 

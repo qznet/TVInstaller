@@ -1,6 +1,8 @@
 package com.bigsinger.tvinstaller.ui;
 
 import android.Manifest;
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -15,19 +17,13 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import com.bigsinger.tvinstaller.R;
-import com.bigsinger.tvinstaller.adapter.DeviceAdapter;
 import com.bigsinger.tvinstaller.data.DeviceHistoryStore;
 import com.bigsinger.tvinstaller.data.DeviceInfo;
 import com.bigsinger.tvinstaller.net.LanScanner;
@@ -39,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-public class ScanActivity extends AppCompatActivity {
+public class ScanActivity extends Activity {
     private static final int REQ_STORAGE = 100;
 
     private final LanScanner scanner = new LanScanner();
@@ -47,8 +43,8 @@ public class ScanActivity extends AppCompatActivity {
 
     private CredentialStore credentialStore;
     private DeviceHistoryStore historyStore;
-    private DeviceAdapter adapter;
-    private RecyclerView deviceRecycler;
+    private LinearLayout deviceList;
+    private ScrollView deviceScroll;
     private TextView statusBadge;
     private TextView scanMessage;
     private TextView scanCount;
@@ -63,25 +59,16 @@ public class ScanActivity extends AppCompatActivity {
 
         credentialStore = new CredentialStore(this);
         historyStore = new DeviceHistoryStore(this);
-
         statusBadge = findViewById(R.id.statusBadge);
         scanMessage = findViewById(R.id.scanMessage);
         scanCount = findViewById(R.id.scanCount);
         scanProgress = findViewById(R.id.scanProgress);
         emptyText = findViewById(R.id.emptyText);
-        deviceRecycler = findViewById(R.id.deviceRecycler);
+        deviceScroll = findViewById(R.id.deviceScroll);
+        deviceList = findViewById(R.id.deviceList);
+
         Button manualIpButton = findViewById(R.id.manualIpButton);
         Button refreshButton = findViewById(R.id.refreshButton);
-
-        adapter = new DeviceAdapter(devices, new DeviceAdapter.Listener() {
-            @Override
-            public void onDeviceClick(DeviceInfo device) {
-                connect(device);
-            }
-        });
-        deviceRecycler.setLayoutManager(new LinearLayoutManager(this));
-        deviceRecycler.setAdapter(adapter);
-
         manualIpButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -109,19 +96,16 @@ public class ScanActivity extends AppCompatActivity {
     private void requestStoragePermissionIfNeeded() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 && Build.VERSION.SDK_INT <= Build.VERSION_CODES.P
-                && ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                && checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                    REQ_STORAGE);
+            requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQ_STORAGE);
         }
     }
 
     private void loadCachedDevices() {
         devices.clear();
         devices.addAll(historyStore.getDevices());
-        adapter.notifyDataSetChanged();
-        updateEmptyState();
+        renderDevices();
         focusDeviceListIfPossible();
     }
 
@@ -171,18 +155,37 @@ public class ScanActivity extends AppCompatActivity {
         });
     }
 
+    private void renderDevices() {
+        deviceList.removeAllViews();
+        LayoutInflater inflater = LayoutInflater.from(this);
+        for (final DeviceInfo device : devices) {
+            View item = inflater.inflate(R.layout.item_device, deviceList, false);
+            TextView nameText = item.findViewById(R.id.nameText);
+            TextView addressText = item.findViewById(R.id.addressText);
+            nameText.setText(device.getName());
+            addressText.setText(device.getAddress() + " · 点击连接");
+            item.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    connect(device);
+                }
+            });
+            deviceList.addView(item);
+        }
+        updateEmptyState();
+    }
+
     private void addDeviceIfMissing(DeviceInfo device) {
         if (device == null || TextUtils.isEmpty(device.getAddress())) {
             return;
         }
-        for (int i = 0; i < devices.size(); i++) {
-            if (device.getAddress().equals(devices.get(i).getAddress())) {
+        for (DeviceInfo existing : devices) {
+            if (device.getAddress().equals(existing.getAddress())) {
                 return;
             }
         }
         devices.add(device);
-        adapter.notifyItemInserted(devices.size() - 1);
-        updateEmptyState();
+        renderDevices();
         focusDeviceListIfPossible();
     }
 
@@ -191,17 +194,20 @@ public class ScanActivity extends AppCompatActivity {
     }
 
     private void focusDeviceListIfPossible() {
-        if (devices.isEmpty() || deviceRecycler.hasFocus()) {
+        if (devices.isEmpty() || deviceScroll.hasFocus()) {
             return;
         }
         View currentFocus = getCurrentFocus();
         if (currentFocus != null && currentFocus != emptyText) {
             return;
         }
-        deviceRecycler.post(new Runnable() {
+        deviceScroll.post(new Runnable() {
             @Override
             public void run() {
-                deviceRecycler.requestFocus();
+                deviceScroll.requestFocus();
+                if (deviceList.getChildCount() > 0) {
+                    deviceList.getChildAt(0).requestFocus();
+                }
             }
         });
     }
@@ -209,7 +215,7 @@ public class ScanActivity extends AppCompatActivity {
     private void connect(DeviceInfo device) {
         Credential saved = credentialStore.get(device.getAddress());
         if (saved != null) {
-            authenticate(device, saved.getUsername(), saved.getPassword(), true, true);
+            authenticate(device, saved.getUsername(), saved.getPassword(), true);
             return;
         }
         showLoginDialog(device, null);
@@ -222,6 +228,7 @@ public class ScanActivity extends AppCompatActivity {
         CheckBox rememberCheck = view.findViewById(R.id.rememberCheck);
         if (defaultCredential != null) {
             userEdit.setText(defaultCredential.getUsername());
+            passwordEdit.setText(defaultCredential.getPassword());
         }
 
         AlertDialog dialog = new AlertDialog.Builder(this)
@@ -242,16 +249,20 @@ public class ScanActivity extends AppCompatActivity {
                             Toast.makeText(ScanActivity.this, "请输入用户名和密码", Toast.LENGTH_SHORT).show();
                             return;
                         }
+                        if (rememberCheck.isChecked()) {
+                            credentialStore.save(device.getAddress(), username, password);
+                        }
                         dialog.dismiss();
-                        authenticate(device, username, password, rememberCheck.isChecked(), false);
+                        authenticate(device, username, password, rememberCheck.isChecked());
                     }
                 });
             }
         });
         dialog.show();
+        styleDialogButtons(dialog);
     }
 
-    private void authenticate(DeviceInfo device, String username, String password, boolean remember, boolean savedCredential) {
+    private void authenticate(DeviceInfo device, String username, String password, boolean remember) {
         ProgressDialog progressDialog = new ProgressDialog(this);
         progressDialog.setMessage("正在连接 " + device.getAddress());
         progressDialog.setCancelable(false);
@@ -280,13 +291,8 @@ public class ScanActivity extends AppCompatActivity {
                     return;
                 }
 
-                if (savedCredential) {
-                    credentialStore.clear(device.getAddress());
-                    Toast.makeText(ScanActivity.this, "已保存凭证失效，请重新登录", Toast.LENGTH_SHORT).show();
-                    showLoginDialog(device, new Credential(username, ""));
-                } else {
-                    Toast.makeText(ScanActivity.this, readableAuthError(error), Toast.LENGTH_LONG).show();
-                }
+                Toast.makeText(ScanActivity.this, readableAuthError(error), Toast.LENGTH_LONG).show();
+                showLoginDialog(device, new Credential(username, password));
             }
         }.execute();
     }
@@ -344,6 +350,20 @@ public class ScanActivity extends AppCompatActivity {
             }
         });
         dialog.show();
+        styleDialogButtons(dialog);
+    }
+
+    private void styleDialogButtons(AlertDialog dialog) {
+        Button positive = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        Button negative = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+        if (positive != null) {
+            positive.setBackgroundResource(R.drawable.bg_button_primary);
+            positive.setTextColor(getResources().getColor(R.color.text_primary));
+        }
+        if (negative != null) {
+            negative.setBackgroundResource(R.drawable.bg_button_secondary);
+            negative.setTextColor(getResources().getColor(R.color.text_primary));
+        }
     }
 
     private boolean isValidIp(String address) {

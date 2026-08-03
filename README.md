@@ -53,7 +53,7 @@ adb install SMBInstaller.apk
 - **凭证加密存储** — AES-256 加密密码，不存明文
 - **APK 文件过滤** — 只显示文件夹和 .apk 文件，按修改时间降序排列
 - **下载+安装** — 流式下载到本地缓存，自动调起系统安装界面
-- **TV 遥控器适配** — AndroidX Leanback，全程方向键+OK 完成操作
+- **TV 遥控器适配** — 平台原生控件与显式焦点顺序，全程方向键+OK 完成操作
 
 ## 兼容性
 
@@ -63,7 +63,7 @@ adb install SMBInstaller.apk
 | Android 7.0+ | `FileProvider` 生成 content URI |
 | Android 8.0+ | 检查并引导"安装未知应用"权限 |
 | Android 10+ | 分区存储适配，使用外部缓存目录 |
-| Android TV | Leanback 焦点导航，全程遥控器操作 |
+| Android TV | 平台控件焦点导航，全程遥控器操作 |
 
 ## 项目结构
 
@@ -85,9 +85,6 @@ TVInstallerFromSamba/
 │       │   └── CredentialStore.java   # AES-256 加密存储
 │       ├── service/
 │       │   └── ApkDownloadService.java # 后台下载服务
-│       ├── adapter/
-│       │   ├── DeviceAdapter.java     # 设备列表适配器
-│       │   └── FileAdapter.java       # 文件列表适配器
 │       └── data/
 │           ├── DeviceHistoryStore.java # 历史设备持久化
 │           ├── DeviceInfo.java         # 设备信息模型
@@ -100,7 +97,7 @@ TVInstallerFromSamba/
 - **开发语言**：Java 8
 - **最低 API**：17（Android 4.2）
 - **SMB 协议**：JCIFS-NG 2.1.8（纯 Java，支持 SMB v2/v3）
-- **TV 适配**：AndroidX Leanback
+- **TV 适配**：Android 平台原生控件，无 AndroidX/Kotlin/native 依赖
 - **密码加密**：AES-256/CBC/PKCS5Padding
 
 ## 构建

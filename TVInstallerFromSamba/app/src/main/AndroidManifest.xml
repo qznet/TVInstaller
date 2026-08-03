@@ -20,7 +20,6 @@
         android:required="false" />
 
     <application
-        android:name=".TvInstallerApplication"
         android:allowBackup="false"
         android:banner="@drawable/banner_tv"
         android:icon="@drawable/ic_launcher"
@@ -49,13 +48,9 @@
             android:exported="false" />
 
         <provider
-            android:name="androidx.core.content.FileProvider"
+            android:name=".InstallFileProvider"
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/provider_paths" />
-        </provider>
+            android:grantUriPermissions="true" />
     </application>
 </manifest>
