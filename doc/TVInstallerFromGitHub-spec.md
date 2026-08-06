@@ -1,6 +1,6 @@
 # TV Installer from GitHub · 产品规范文档 (Spec)
 
-> 版本 v1.0 | 最后更新: 2026-07-12 | 状态: 原型已确认，进入开发阶段
+> 版本 v1.0.2 | 最后更新: 2026-08-06 | 状态: 已实现并完成模拟器验证
 
 ---
 
@@ -34,8 +34,8 @@
 |------|------|------|
 | 语言 | Java | 兼容 Android 4.2+，稳定成熟 |
 | 最低 SDK | API 17 (Android 4.2) | 覆盖绝大多数现存 TV 设备 |
-| 目标 SDK | API 33 (Android 13) | 平衡新特性与兼容性 |
-| 网络 | OkHttp 4.x | HTTP 请求，文件下载，支持断点续传 |
+| 目标 SDK | API 34 (Android 14) | 平衡新特性与兼容性 |
+| 网络 | OkHttp 3.12.x | HTTP 请求、自动线路切换、文件下载和断点续传 |
 | 浏览器内核 | WebView (系统内置) | 用于内嵌渲染 GitHub 页面，不依赖第三方解析库 |
 | 本地存储 | SharedPreferences + 文件存储 | 收藏列表、配置缓存 |
 | 解析 | 不解析 HTML！ | 仅通过 WebView 展示，避免 GitHub 结构变更导致失效 |
@@ -70,6 +70,13 @@
 - **不解析 GitHub 网页 DOM**：所有内容展示通过 WebView 完成，仅封装遥控器按键映射。这样即使 GitHub 前端更新，应用依然可用。
 - **数据源分离**：预配置列表通过 raw 文件更新，收藏列表本地持久化，两者互不干扰。
 - **下载路径**：APK 下载至 `/sdcard/Android/data/com.tvig.installer/cache/`，安装完成后自动清理。
+
+### 2.4 国内网络自动加速
+- 配置同步与 APK 下载统一通过 `GitHubRouteManager` 生成候选线路。
+- 默认顺序为国内 HTTPS 中转节点，全部失败后回退 GitHub 原始地址；上次成功线路在下次请求时优先使用。
+- 任一线路出现连接超时、HTTP 错误、断流或返回非 APK 内容时，后台自动切换下一线路，用户无需使用遥控器选择。
+- APK 下载保留 Range 断点续传，并在完成后校验 ZIP/APK 文件头，避免代理错误页被当作 APK 安装。
+- WebView 继续加载 GitHub 原始页面以保持完整浏览功能；直连失败时自动尝试本地网页缓存。
 
 ---
 
@@ -142,10 +149,10 @@
 ### 5.1 同步 (Sync)
 - **入口**：列表页顶部 “同步” 按钮
 - **行为**：
-  1. 请求预设的 raw 地址（如 `https://raw.githubusercontent.com/xxx/preset.txt`）
+  1. 使用自动线路列表请求预设的 raw 地址（如 `https://raw.githubusercontent.com/xxx/preset.txt`）
   2. 下载并覆盖本地 `preset.txt`
   3. 重新加载列表
-- **失败处理**：保留旧数据，Toast 提示 “同步失败，请检查网络”
+- **失败处理**：逐条切换中转线路和 GitHub 原站；全部失败后保留旧数据并使用内置配置。
 
 ### 5.2 仓库浏览
 - 点击仓库 → WebView 加载 `https://github.com/<owner>/<repo>`
@@ -159,10 +166,11 @@
 - **触发**：用户焦点在 `.apk` 链接上时按下 OK
 - **流程**：
   1. 获取下载 URL（从 WebView 当前页面的链接或通过 JS 提取）
-  2. 开始下载，显示进度（Toast 或底部进度条）
+  2. 自动选择上次成功线路并开始下载，失败时切换线路并从 `.part` 文件继续
   3. 下载完成 → 弹出安装确认对话框
   4. 用户确认 → 调用 `Intent.ACTION_VIEW` 打开 APK 文件，调起系统安装器
   5. 安装完成后，自动删除缓存 APK 文件（或下次启动时清理）
+  6. 下载完成后校验 APK ZIP 文件头，错误页面或无效文件不会进入安装流程
 - **约束**：
   - 需申请 `WRITE_EXTERNAL_STORAGE` (Android 4.2) 或使用 `getExternalFilesDir` (Android 10+)
   - Android 8.0+ 需声明 `REQUEST_INSTALL_PACKAGES` 权限

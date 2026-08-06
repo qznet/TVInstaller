@@ -63,8 +63,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import okhttp3.Call;
-
 /** Main TV surface: repository list on the left and a real GitHub WebView on the right. */
 public final class MainActivity extends AppCompatActivity implements RepositoryAdapter.Listener {
     private static final String PREVIEW_URL = "file:///android_asset/preview.html";
@@ -98,12 +96,14 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
     private boolean syncing;
     private boolean clearHistoryOnPreview;
     private boolean downloadFailed;
+    private boolean cacheRetryActive;
     private String mainFrameUrl;
     private String lastWebErrorUrl;
+    private String cacheRetryUrl;
     private String lastDownloadUrl;
     private String lastDownloadFileName;
     private File pendingInstallFile;
-    private Call syncCall;
+    private SyncClient.SyncTask syncCall;
 
     private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
         @Override
@@ -128,7 +128,7 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         setContentView(R.layout.activity_main);
 
         repositoryStore = new RepositoryStore(this);
-        syncClient = new SyncClient(repositoryStore);
+        syncClient = new SyncClient(this, repositoryStore);
         bindViews();
         styleTitle();
         configureRepositoryList();
@@ -910,7 +910,12 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         @Override
         public void onPageStarted(WebView view, String url, Bitmap favicon) {
             mainFrameUrl = url;
-            lastWebErrorUrl = null;
+            if (!cacheRetryActive || !TextUtils.equals(cacheRetryUrl, url)) {
+                cacheRetryActive = false;
+                cacheRetryUrl = null;
+                lastWebErrorUrl = null;
+                view.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+            }
             browserUrlText.setText(displayUrl(url));
             webProgress.setVisibility(View.VISIBLE);
         }
@@ -919,6 +924,9 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         public void onPageFinished(WebView view, String url) {
             browserUrlText.setText(displayUrl(url));
             webProgress.setVisibility(View.GONE);
+            view.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+            cacheRetryActive = false;
+            cacheRetryUrl = null;
             if (clearHistoryOnPreview && PREVIEW_URL.equals(url)) {
                 view.clearHistory();
                 clearHistoryOnPreview = false;
@@ -946,12 +954,31 @@ public final class MainActivity extends AppCompatActivity implements RepositoryA
         }
 
         private void showBrowserError(String url) {
+            if (!cacheRetryActive && isGitHubPage(url)) {
+                cacheRetryActive = true;
+                cacheRetryUrl = url;
+                webView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                Toast.makeText(MainActivity.this,
+                        R.string.browser_cache_retry, Toast.LENGTH_SHORT).show();
+                webView.loadUrl(url);
+                return;
+            }
             if (TextUtils.equals(lastWebErrorUrl, url)) {
                 return;
             }
             lastWebErrorUrl = url;
+            webView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
             Toast.makeText(MainActivity.this,
                     R.string.browser_error, Toast.LENGTH_LONG).show();
+        }
+
+        private boolean isGitHubPage(String url) {
+            if (TextUtils.isEmpty(url)) {
+                return false;
+            }
+            Uri uri = Uri.parse(url);
+            return "https".equalsIgnoreCase(uri.getScheme())
+                    && "github.com".equalsIgnoreCase(uri.getHost());
         }
 
         @Override

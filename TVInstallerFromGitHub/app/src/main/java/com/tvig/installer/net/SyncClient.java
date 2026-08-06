@@ -1,7 +1,9 @@
 package com.tvig.installer.net;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import com.tvig.installer.data.RepositoryItem;
 import com.tvig.installer.data.RepositoryStore;
@@ -9,8 +11,8 @@ import com.tvig.installer.data.RepositoryStore;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.List;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
@@ -21,61 +23,113 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
-/** Downloads a UTF-8 preset and commits it only after complete validation. */
+/** Downloads a UTF-8 preset through automatic GitHub route failover. */
 public final class SyncClient {
+    private static final String TAG = "SyncClient";
+
     public interface Callback {
         void onSuccess(List<RepositoryItem> repositories);
 
         void onError(Throwable error);
     }
 
+    public static final class SyncTask {
+        private Call activeCall;
+        private boolean canceled;
+
+        public synchronized void cancel() {
+            canceled = true;
+            if (activeCall != null) {
+                activeCall.cancel();
+            }
+        }
+
+        synchronized boolean attach(Call call) {
+            if (canceled) {
+                call.cancel();
+                return false;
+            }
+            activeCall = call;
+            return true;
+        }
+
+        synchronized boolean isCanceled() {
+            return canceled;
+        }
+    }
+
     private final RepositoryStore store;
     private final OkHttpClient client;
+    private final GitHubRouteManager routeManager;
     private final Handler mainHandler;
 
-    public SyncClient(RepositoryStore store) {
+    public SyncClient(Context context, RepositoryStore store) {
         this(store, new OkHttpClient.Builder()
-                .callTimeout(3, TimeUnit.SECONDS)
-                .connectTimeout(3, TimeUnit.SECONDS)
-                .readTimeout(3, TimeUnit.SECONDS)
+                .callTimeout(10, TimeUnit.SECONDS)
+                .connectTimeout(4, TimeUnit.SECONDS)
+                .readTimeout(8, TimeUnit.SECONDS)
                 .protocols(Collections.singletonList(Protocol.HTTP_1_1))
                 .followRedirects(true)
                 .followSslRedirects(true)
-                .build());
+                .build(), new GitHubRouteManager(context));
     }
 
-    public SyncClient(RepositoryStore store, OkHttpClient client) {
-        if (store == null || client == null) {
-            throw new IllegalArgumentException("store and client must not be null");
+    SyncClient(RepositoryStore store, OkHttpClient client,
+               GitHubRouteManager routeManager) {
+        if (store == null || client == null || routeManager == null) {
+            throw new IllegalArgumentException("store, client and routeManager must not be null");
         }
         this.store = store;
         this.client = client;
+        this.routeManager = routeManager;
         this.mainHandler = new Handler(Looper.getMainLooper());
     }
 
     /** Starts an asynchronous sync. Callback methods are delivered on the main thread. */
-    public Call sync(String url, final Callback callback) {
+    public SyncTask sync(String url, final Callback callback) {
         if (callback == null) {
             throw new IllegalArgumentException("callback must not be null");
         }
         HttpUrl parsed = url == null ? null : HttpUrl.parse(url.trim());
+        SyncTask task = new SyncTask();
         if (parsed == null || !"https".equalsIgnoreCase(parsed.scheme())) {
-            postError(callback, new IllegalArgumentException("Preset URL must be HTTPS"));
-            return null;
+            postError(task, callback, new IllegalArgumentException("Preset URL must be HTTPS"));
+            return task;
         }
 
+        List<String> candidates = routeManager.candidates(parsed.toString());
+        attempt(task, candidates, 0, callback, null);
+        return task;
+    }
+
+    private void attempt(final SyncTask task, final List<String> candidates,
+                         final int index, final Callback callback,
+                         final Throwable previousError) {
+        if (task.isCanceled()) {
+            return;
+        }
+        if (index >= candidates.size()) {
+            postError(task, callback, previousError == null
+                    ? new IOException("No preset route is available") : previousError);
+            return;
+        }
+
+        final String candidateUrl = candidates.get(index);
         Request request = new Request.Builder()
-                .url(parsed)
+                .url(candidateUrl)
                 .header("Accept", "text/plain, text/*;q=0.9, */*;q=0.1")
                 .header("Accept-Charset", "UTF-8")
                 .header("Cache-Control", "no-cache")
                 .header("User-Agent", "TVInstallerFromGitHub/1.0")
                 .build();
-        Call call = client.newCall(request);
+        final Call call = client.newCall(request);
+        if (!task.attach(call)) {
+            return;
+        }
         call.enqueue(new okhttp3.Callback() {
             @Override
             public void onFailure(Call call, IOException error) {
-                postError(callback, error);
+                failRoute(task, candidates, index, callback, candidateUrl, error);
             }
 
             @Override
@@ -94,15 +148,28 @@ public final class SyncClient {
                     }
                     byte[] bytes = readLimited(body);
                     store.replacePresetAtomically(bytes);
-                    postSuccess(callback, store.getRepositories());
+                    routeManager.markSuccess(candidateUrl);
+                    Log.i(TAG, "Preset route succeeded: "
+                            + GitHubRouteManager.routeName(candidateUrl));
+                    postSuccess(task, callback, store.getRepositories());
                 } catch (Exception error) {
-                    postError(callback, error);
+                    failRoute(task, candidates, index, callback, candidateUrl, error);
                 } finally {
                     response.close();
                 }
             }
         });
-        return call;
+    }
+
+    private void failRoute(SyncTask task, List<String> candidates, int index,
+                           Callback callback, String candidateUrl, Throwable error) {
+        if (task.isCanceled()) {
+            return;
+        }
+        routeManager.markFailure(candidateUrl);
+        Log.w(TAG, "Preset route failed: "
+                + GitHubRouteManager.routeName(candidateUrl), error);
+        attempt(task, candidates, index + 1, callback, error);
     }
 
     private byte[] readLimited(ResponseBody body) throws IOException {
@@ -125,21 +192,26 @@ public final class SyncClient {
         }
     }
 
-    private void postSuccess(final Callback callback,
+    private void postSuccess(final SyncTask task, final Callback callback,
                              final List<RepositoryItem> repositories) {
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                callback.onSuccess(repositories);
+                if (!task.isCanceled()) {
+                    callback.onSuccess(repositories);
+                }
             }
         });
     }
 
-    private void postError(final Callback callback, final Throwable error) {
+    private void postError(final SyncTask task, final Callback callback,
+                           final Throwable error) {
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                callback.onError(error);
+                if (!task.isCanceled()) {
+                    callback.onError(error);
+                }
             }
         });
     }

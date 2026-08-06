@@ -8,7 +8,10 @@ import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.tvig.installer.net.GitHubRouteManager;
+
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -56,11 +59,12 @@ public final class ApkDownloadService extends IntentService {
             "bytes\\s+\\*/(\\d+)", Pattern.CASE_INSENSITIVE);
 
     private final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(20, TimeUnit.SECONDS)
+            .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
             .protocols(Collections.singletonList(Protocol.HTTP_1_1))
             .followRedirects(true)
             .followSslRedirects(true)
+            .retryOnConnectionFailure(false)
             .build();
 
     private volatile Call activeCall;
@@ -98,8 +102,9 @@ public final class ApkDownloadService extends IntentService {
         String fileName = sanitizeFileName(requestedName, parsedUrl);
         File completedFile = new File(directory, fileName);
         File partialFile = new File(directory, fileName + ".part");
+        GitHubRouteManager routeManager = new GitHubRouteManager(this);
         try {
-            download(parsedUrl, partialFile, completedFile, fileName);
+            downloadWithFailover(parsedUrl, partialFile, completedFile, fileName, routeManager);
         } catch (Exception error) {
             Log.e(TAG, "APK download failed: " + parsedUrl, error);
             sendError(parsedUrl.toString(), readableError(error));
@@ -117,21 +122,56 @@ public final class ApkDownloadService extends IntentService {
         super.onDestroy();
     }
 
-    private void download(HttpUrl url, File partialFile, File completedFile,
+    private void downloadWithFailover(HttpUrl originalUrl, File partialFile,
+                                      File completedFile, String fileName,
+                                      GitHubRouteManager routeManager) throws IOException {
+        IOException lastError = null;
+        for (String candidate : routeManager.candidates(originalUrl.toString())) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new InterruptedIOException("APK download interrupted");
+            }
+            HttpUrl candidateUrl = HttpUrl.parse(candidate);
+            if (candidateUrl == null) {
+                continue;
+            }
+            try {
+                download(candidateUrl, originalUrl.toString(), partialFile, completedFile, fileName);
+                routeManager.markSuccess(candidate);
+                Log.i(TAG, "APK route succeeded: "
+                        + GitHubRouteManager.routeName(candidate));
+                return;
+            } catch (InterruptedIOException error) {
+                if (Thread.currentThread().isInterrupted()) {
+                    throw error;
+                }
+                lastError = error;
+            } catch (IOException error) {
+                lastError = error;
+            }
+            routeManager.markFailure(candidate);
+            Log.w(TAG, "APK route failed: "
+                    + GitHubRouteManager.routeName(candidate), lastError);
+        }
+        throw lastError == null
+                ? new IOException("No APK download route is available") : lastError;
+    }
+
+    private void download(HttpUrl requestUrl, String originalUrl,
+                          File partialFile, File completedFile,
                           String fileName) throws IOException {
         long offset = partialFile.isFile() ? partialFile.length() : 0L;
-        Response response = execute(url, offset);
+        Response response = execute(requestUrl, offset);
         try {
             if (offset > 0L && response.code() == 416) {
                 long remoteTotal = parseUnsatisfiedTotal(response.header("Content-Range"));
                 if (remoteTotal == offset) {
-                    finishDownload(url, partialFile, completedFile, fileName, offset);
+                    finishDownload(originalUrl, partialFile, completedFile, fileName, offset);
                     return;
                 }
                 response.close();
                 truncate(partialFile);
                 offset = 0L;
-                response = execute(url, 0L);
+                response = execute(requestUrl, 0L);
             } else if (offset > 0L && response.code() == 200) {
                 // The server ignored Range. Restart rather than appending duplicate bytes.
                 truncate(partialFile);
@@ -142,12 +182,16 @@ public final class ApkDownloadService extends IntentService {
                     response.close();
                     truncate(partialFile);
                     offset = 0L;
-                    response = execute(url, 0L);
+                    response = execute(requestUrl, 0L);
                 }
             }
 
             if (!response.isSuccessful()) {
                 throw new IOException("APK download failed with HTTP " + response.code());
+            }
+            String contentType = response.header("Content-Type", "");
+            if (contentType.toLowerCase(Locale.US).contains("text/html")) {
+                throw new IOException("Download route returned an HTML error page");
             }
             ResponseBody body = response.body();
             if (body == null) {
@@ -156,7 +200,7 @@ public final class ApkDownloadService extends IntentService {
 
             long totalBytes = determineTotalBytes(response, offset, body.contentLength());
             long downloadedBytes = copyResponse(
-                    body, partialFile, offset, totalBytes, url.toString(), fileName);
+                    body, partialFile, offset, totalBytes, originalUrl, fileName);
             if (totalBytes >= 0L && downloadedBytes != totalBytes) {
                 throw new IOException(
                         "Incomplete APK: received " + downloadedBytes + " of " + totalBytes);
@@ -164,7 +208,7 @@ public final class ApkDownloadService extends IntentService {
             if (downloadedBytes <= 0L) {
                 throw new IOException("Downloaded APK is empty");
             }
-            finishDownload(url, partialFile, completedFile, fileName, downloadedBytes);
+            finishDownload(originalUrl, partialFile, completedFile, fileName, downloadedBytes);
         } finally {
             response.close();
         }
@@ -226,10 +270,14 @@ public final class ApkDownloadService extends IntentService {
         }
     }
 
-    private void finishDownload(HttpUrl url, File partialFile, File completedFile,
+    private void finishDownload(String originalUrl, File partialFile, File completedFile,
                                 String fileName, long totalBytes) throws IOException {
         if (!partialFile.isFile()) {
             throw new IOException("Partial APK file is missing");
+        }
+        if (!hasZipHeader(partialFile)) {
+            truncate(partialFile);
+            throw new IOException("Download route did not return a valid APK");
         }
         if (completedFile.exists() && !completedFile.delete()) {
             throw new IOException("Unable to replace completed APK");
@@ -238,12 +286,28 @@ public final class ApkDownloadService extends IntentService {
             throw new IOException("Unable to finalize APK download");
         }
 
-        Intent broadcast = baseBroadcast(ACTION_COMPLETE, url.toString(), fileName);
+        Intent broadcast = baseBroadcast(ACTION_COMPLETE, originalUrl, fileName);
         broadcast.putExtra(EXTRA_FILE_PATH, completedFile.getAbsolutePath());
         broadcast.putExtra(EXTRA_PROGRESS, 100);
         broadcast.putExtra(EXTRA_BYTES_DOWNLOADED, totalBytes);
         broadcast.putExtra(EXTRA_TOTAL_BYTES, totalBytes);
         LocalBroadcastManager.getInstance(this).sendBroadcast(broadcast);
+    }
+
+    private boolean hasZipHeader(File file) throws IOException {
+        FileInputStream input = new FileInputStream(file);
+        try {
+            int first = input.read();
+            int second = input.read();
+            int third = input.read();
+            int fourth = input.read();
+            return first == 'P' && second == 'K'
+                    && ((third == 3 && fourth == 4)
+                    || (third == 5 && fourth == 6)
+                    || (third == 7 && fourth == 8));
+        } finally {
+            input.close();
+        }
     }
 
     private void sendProgress(String url, String fileName,

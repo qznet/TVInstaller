@@ -29,6 +29,7 @@
     <string name="refresh">刷新</string>
     <string name="default_repository_url" translatable="false">github.com</string>
     <string name="browser_loading">正在加载 GitHub…</string>
+    <string name="browser_cache_retry">GitHub 直连失败，正在尝试本地缓存…</string>
     <string name="browser_error">网页无法加载，请检查网络后按刷新重试</string>
 
     <string name="download_idle">等待下载</string>
