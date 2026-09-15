@@ -292,22 +292,39 @@ public class ScanActivity extends Activity {
                     return;
                 }
 
-                Toast.makeText(ScanActivity.this, readableAuthError(authError), Toast.LENGTH_LONG).show();
-                showLoginDialog(device, new Credential(username, password));
+                showAuthErrorDialog(device, authError, username, password);
             }
         }.execute();
     }
 
     private String readableAuthError(Exception error) {
-        String message = error == null ? "" : error.getMessage();
-        if (message != null && message.contains("C000006D")) {
-            return "登录失败 (0xC000006D)：已依次尝试「账号登录」与「匿名/Guest」均被拒。"
-                    + "请确认服务器已开启 Guest 或免密共享；可试填 guest/guest，或留空直接登录";
+        if (error == null) {
+            return "连接失败，请检查用户名、密码或网络";
         }
-        if (message != null && message.toLowerCase(Locale.ROOT).contains("timed")) {
-            return "连接超时，请检查IP或防火墙设置";
+        String message = error.getMessage();
+        if (TextUtils.isEmpty(message)) {
+            return error.getClass().getName();
         }
-        return TextUtils.isEmpty(message) ? "连接失败，请检查用户名、密码或网络" : message;
+        return message;
+    }
+
+    /**
+     * 用对话框完整展示 jcifs 诊断信息（每条策略的异常类型 + NTSTATUS + 提示），
+     * 便于据此精确定位 SMB 服务器配置问题。
+     */
+    private void showAuthErrorDialog(DeviceInfo device, Exception error, String username, String password) {
+        String msg = readableAuthError(error);
+        new AlertDialog.Builder(this)
+                .setTitle("SMB 登录失败（诊断信息）")
+                .setMessage(msg)
+                .setPositiveButton("重试", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        showLoginDialog(device, new Credential(username, password));
+                    }
+                })
+                .setNegativeButton("关闭", null)
+                .show();
     }
 
     private void openFileList(DeviceInfo device, String username, String password) {
