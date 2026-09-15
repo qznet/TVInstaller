@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import com.bigsinger.tvinstaller.data.SmbEntry;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,27 +26,35 @@ public class SmbRepository {
     public static final int PAGE_SIZE = 100;
 
     /**
-     * 尝试登录，自动按多种凭据策略回退（与 Windows 等客户端行为一致：
-     * 先尝试用户输入的账号，失败再回退到匿名/Guest）。
-     *
-     * @return 登录成功时实际生效的凭据 {username, password}，供后续 list/open 复用；
-     *         全部策略均失败则抛出最后一个异常。
+     * 尝试登录，按多种凭据策略依次回退（覆盖 Samba `map to guest` 的各类配置）：
+     *   1) 用户输入了用户名 -> 真实账号登录（保留用户名/密码，guest/guest、任意账号都走这里）；
+     *   2) 显式 guest 会话：guest/guest（Samba 常见 guest 账号）；
+     *   3) 匿名（无参构造 = 匿名 guest 会话回退）。
+     * 任一策略成功即返回实际生效凭据；全部失败则抛出携带每条策略诊断的异常。
      */
     public String[] authenticate(String host, String username, String password)
             throws IOException, CIFSException {
         List<NtlmPasswordAuthenticator> strategies = buildStrategies(username, password);
+        StringBuilder diag = new StringBuilder();
         Throwable lastError = null;
         for (NtlmPasswordAuthenticator auth : strategies) {
+            String label = strategyLabel(username, password, auth);
             CIFSContext ctx = baseContext().withCredentials(auth);
             SmbFile root = new SmbFile(rootUrl(host), ctx);
             try {
                 root.connect();
+                diag.append("✓ 成功: ").append(label).append("\n");
                 return effectiveCredentials(username, password, auth);
             } catch (SmbAuthException ae) {
                 // 仅登录类失败才回退到下一策略；网络/超时等不再尝试，直接上抛
                 lastError = ae;
+                diag.append("✗ ").append(label).append(" -> ").append(ae.getClass().getSimpleName())
+                        .append(" ").append(ntStatusOf(ae)).append(" ").append(safeMsg(ae)).append("\n");
             } catch (IOException e) {
-                throw e;
+                lastError = e;
+                diag.append("✗ ").append(label).append(" -> IO ").append(e.getClass().getSimpleName())
+                        .append(" ").append(safeMsg(e)).append("\n");
+                throw new IOException(buildDiag("连接/网络错误，已停止尝试其它凭据", diag), e);
             } finally {
                 try {
                     root.close();
@@ -54,10 +63,8 @@ public class SmbRepository {
                 }
             }
         }
-        if (lastError instanceof IOException) {
-            throw (IOException) lastError;
-        }
-        throw new IOException("所有 SMB 登录方式均失败，请检查服务器是否开启 Guest/免密访问");
+        throw new IOException(buildDiag("所有 SMB 登录方式均失败，请检查服务器是否开启 Guest/免密访问", diag),
+                lastError instanceof IOException ? (IOException) lastError : new IOException(diag.toString()));
     }
 
     public List<SmbEntry> list(String host, String path, String username, String password, int offset)
@@ -147,17 +154,30 @@ public class SmbRepository {
     }
 
     /**
-     * 凭据策略：
-     * 1) 用户输入了用户名 -> 真实登录（保留用户名与密码，guest/guest、任意账号都走这里）；
-     * 2) 匿名/Guest（空密码）-> 服务器免密或开启 guest 时由 jcifs-ng 自动回退到 guest 会话。
+     * 凭据策略（顺序即尝试顺序）：
+     *   1) 用户输入了用户名 -> 真实账号登录（保留密码）；
+     *   2) 显式 guest 会话 guest/guest（覆盖 Samba 常见配置）；
+     *   3) 匿名（无参构造，jcifs-ng 按 guest 会话回退）。
      */
     private List<NtlmPasswordAuthenticator> buildStrategies(String username, String password) {
         List<NtlmPasswordAuthenticator> list = new ArrayList<NtlmPasswordAuthenticator>();
         if (!TextUtils.isEmpty(username)) {
             list.add(new NtlmPasswordAuthenticator("", username, password));
         }
+        list.add(new NtlmPasswordAuthenticator("", "guest", "guest"));
         list.add(new NtlmPasswordAuthenticator());
         return list;
+    }
+
+    private String strategyLabel(String username, String password, NtlmPasswordAuthenticator auth) {
+        if (auth.isAnonymous()) {
+            return "匿名(无凭据)";
+        }
+        String u = username == null ? "" : username;
+        if ("guest".equalsIgnoreCase(u.trim())) {
+            return "Guest账号(guest/" + (password == null ? "" : password) + ")";
+        }
+        return "账号登录(" + u + "/" + (password == null ? "" : password) + ")";
     }
 
     private String[] effectiveCredentials(String username, String password, NtlmPasswordAuthenticator auth) {
@@ -191,6 +211,31 @@ public class SmbRepository {
             return new NtlmPasswordAuthenticator();
         }
         return new NtlmPasswordAuthenticator("", username, password);
+    }
+
+    private static String ntStatusOf(Throwable t) {
+        try {
+            Method m = t.getClass().getMethod("getNtStatus");
+            Object v = m.invoke(t);
+            if (v instanceof Integer) {
+                int code = (Integer) v;
+                if (code != 0) {
+                    return "NTSTATUS=0x" + Integer.toHexString(code).toUpperCase();
+                }
+            }
+        } catch (Exception ignored) {
+            // jcifs 版本差异：无 getNtStatus 时忽略，仍会显示 message
+        }
+        return "";
+    }
+
+    private static String safeMsg(Throwable t) {
+        String m = t.getMessage();
+        return m == null ? "" : m.replace("\n", " ").trim();
+    }
+
+    private static String buildDiag(String summary, StringBuilder detail) {
+        return summary + "\n\n尝试过的凭据策略:\n" + detail;
     }
 
     private SmbEntry toEntry(SmbFile file) throws IOException {
