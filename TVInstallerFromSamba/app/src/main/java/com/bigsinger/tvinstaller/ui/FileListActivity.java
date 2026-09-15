@@ -99,7 +99,8 @@ public class FileListActivity extends Activity {
         username = getIntent().getStringExtra(EXTRA_USERNAME);
         password = getIntent().getStringExtra(EXTRA_PASSWORD);
         currentPath = normalizePath(getIntent().getStringExtra(EXTRA_INITIAL_PATH));
-        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username)) {
+        // 允许空用户名：匿名(Guest)登录时 username 为空，不能据此判定参数缺失而退出。
+        if (TextUtils.isEmpty(host)) {
             Toast.makeText(this, "连接参数缺失", Toast.LENGTH_SHORT).show();
             finish();
             return;
