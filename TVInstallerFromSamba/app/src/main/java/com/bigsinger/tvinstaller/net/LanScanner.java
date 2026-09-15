@@ -133,16 +133,25 @@ public class LanScanner {
     private List<String> resolveSubnetHosts(Context context) {
         WifiManager wifiManager = (WifiManager) context.getApplicationContext()
                 .getSystemService(Context.WIFI_SERVICE);
-        if (wifiManager == null) {
-            return Collections.emptyList();
-        }
-        DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
-        if (dhcpInfo == null || dhcpInfo.ipAddress == 0) {
-            return Collections.emptyList();
+        if (wifiManager != null) {
+            DhcpInfo dhcpInfo = wifiManager.getDhcpInfo();
+            if (dhcpInfo != null && dhcpInfo.ipAddress != 0) {
+                List<String> hosts = hostsFromIpAndMask(dhcpInfo.ipAddress,
+                        dhcpInfo.netmask == 0 ? 0xFFFFFF00 : dhcpInfo.netmask);
+                if (!hosts.isEmpty()) {
+                    return hosts;
+                }
+            }
         }
 
-        int ip = littleEndianToInt(dhcpInfo.ipAddress);
-        int mask = dhcpInfo.netmask == 0 ? 0xFFFFFF00 : littleEndianToInt(dhcpInfo.netmask);
+        // 回退：电视通常走网线(以太网)，WifiManager 拿不到地址。
+        // 直接从 NetworkInterface 枚举本机 IPv4 地址，按 /24 推导网段。
+        return hostsFromNetworkInterfaces();
+    }
+
+    private List<String> hostsFromIpAndMask(int ipAddress, int netmask) {
+        int ip = littleEndianToInt(ipAddress);
+        int mask = (netmask == 0) ? 0xFFFFFF00 : littleEndianToInt(netmask);
         int networkAddress = ip & mask;
         long network = unsigned(networkAddress);
         long broadcast = unsigned(networkAddress | ~mask);
@@ -157,6 +166,40 @@ public class LanScanner {
             if (address != unsigned(ip)) {
                 hosts.add(formatIp((int) address));
             }
+        }
+        return hosts;
+    }
+
+    private List<String> hostsFromNetworkInterfaces() {
+        List<String> hosts = new ArrayList<String>();
+        try {
+            Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            if (interfaces == null) {
+                return hosts;
+            }
+            while (interfaces.hasMoreElements()) {
+                java.net.NetworkInterface netIf = interfaces.nextElement();
+                if (netIf.isLoopback() || netIf.isVirtual() || !netIf.isUp()) {
+                    continue;
+                }
+                Enumeration<java.net.InetAddress> addresses = netIf.getInetAddresses();
+                while (addresses.hasMoreElements()) {
+                    java.net.InetAddress addr = addresses.nextElement();
+                    if (addr instanceof java.net.Inet4Address) {
+                        byte[] raw = addr.getAddress();
+                        int ip = ((raw[0] & 0xFF) << 24) | ((raw[1] & 0xFF) << 16)
+                                | ((raw[2] & 0xFF) << 8) | (raw[3] & 0xFF);
+                        List<String> subnet = hostsFromIpAndMask(ip, 0xFFFFFF00);
+                        for (String h : subnet) {
+                            if (!hosts.contains(h)) {
+                                hosts.add(h);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to enumerate network interfaces", e);
         }
         return hosts;
     }
