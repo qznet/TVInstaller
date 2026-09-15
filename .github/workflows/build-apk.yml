@@ -1,10 +1,11 @@
-name: Build TVInstallerFromSamba APK
+name: Build TVInstaller APKs
 
 on:
   workflow_dispatch:
   push:
     branches: [ main ]
     paths:
+      - 'TVInstallerFromGitHub/**'
       - 'TVInstallerFromSamba/**'
       - '.github/workflows/build-apk.yml'
 
@@ -47,4 +48,41 @@ jobs:
         with:
           name: TVInstallerFromSamba-release-apk
           path: TVInstallerFromSamba/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  build-github:
+    name: Build TVInstallerFromGitHub release APK
+    runs-on: ubuntu-latest
+    # Use the Android SDK preinstalled on the GitHub runner image so ANDROID_HOME and
+    # ANDROID_SDK_ROOT point to the same location (avoids the "conflicting SDK path" error).
+    env:
+      ANDROID_HOME: /usr/local/lib/android/sdk
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install required Android SDK packages
+        run: |
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          yes | sdkmanager --licenses || true
+          yes | sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Build release APK (Gradle 8.11.1)
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.11.1
+          build-root-directory: TVInstallerFromGitHub
+          arguments: assembleRelease --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TVInstallerFromGitHub-release-apk
+          path: TVInstallerFromGitHub/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
