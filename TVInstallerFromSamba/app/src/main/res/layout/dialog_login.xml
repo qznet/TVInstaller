@@ -37,5 +37,13 @@
         android:checked="true"
         android:text="记住密码（加密存储）"
         android:textColor="@color/text_secondary" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="提示：用户名和密码都留空，将使用匿名(Guest)方式登录；服务器为免密/Guest 时直接留空即可。"
+        android:textColor="@color/text_muted"
+        android:textSize="13sp" />
 </LinearLayout>
 
