@@ -267,39 +267,42 @@ public class ScanActivity extends Activity {
         progressDialog.setCancelable(false);
         progressDialog.show();
 
-        new AsyncTask<Void, Void, Exception>() {
+        new AsyncTask<Void, Void, String[]>() {
+            Exception authError = null;
+
             @Override
-            protected Exception doInBackground(Void... voids) {
+            protected String[] doInBackground(Void... voids) {
                 try {
-                    new SmbRepository().authenticate(device.getAddress(), username, password);
-                    return null;
+                    return new SmbRepository().authenticate(device.getAddress(), username, password);
                 } catch (Exception e) {
-                    return e;
+                    authError = e;
+                    return null;
                 }
             }
 
             @Override
-            protected void onPostExecute(Exception error) {
+            protected void onPostExecute(String[] effective) {
                 progressDialog.dismiss();
-                if (error == null) {
+                if (effective != null) {
                     if (remember) {
                         credentialStore.save(device.getAddress(), username, password);
                     }
                     historyStore.saveDevice(device);
-                    openFileList(device, username, password);
+                    openFileList(device, effective[0], effective[1]);
                     return;
                 }
 
-                Toast.makeText(ScanActivity.this, readableAuthError(error), Toast.LENGTH_LONG).show();
+                Toast.makeText(ScanActivity.this, readableAuthError(authError), Toast.LENGTH_LONG).show();
                 showLoginDialog(device, new Credential(username, password));
             }
         }.execute();
     }
 
     private String readableAuthError(Exception error) {
-        String message = error.getMessage();
+        String message = error == null ? "" : error.getMessage();
         if (message != null && message.contains("C000006D")) {
-            return "登录失败：用户名或密码错误 (0xC000006D)。若服务器为免密/Guest，请留空用户名和密码再登录";
+            return "登录失败 (0xC000006D)：已依次尝试「账号登录」与「匿名/Guest」均被拒。"
+                    + "请确认服务器已开启 Guest 或免密共享；可试填 guest/guest，或留空直接登录";
         }
         if (message != null && message.toLowerCase(Locale.ROOT).contains("timed")) {
             return "连接超时，请检查IP或防火墙设置";
