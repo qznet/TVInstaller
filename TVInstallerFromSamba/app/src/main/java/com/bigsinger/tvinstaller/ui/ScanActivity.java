@@ -245,15 +245,14 @@ public class ScanActivity extends Activity {
                     public void onClick(View v) {
                         String username = userEdit.getText().toString().trim();
                         String password = passwordEdit.getText().toString();
-                        if (TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-                            Toast.makeText(ScanActivity.this, "请输入用户名和密码", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        if (rememberCheck.isChecked()) {
+                        // 用户名和密码留空 = 匿名(Guest)登录；填了用户名则用真实账号登录。
+                        // 不再强制要求非空，否则免密/Guest 服务器永远连不上。
+                        boolean remember = rememberCheck.isChecked() && !TextUtils.isEmpty(username);
+                        if (remember) {
                             credentialStore.save(device.getAddress(), username, password);
                         }
                         dialog.dismiss();
-                        authenticate(device, username, password, rememberCheck.isChecked());
+                        authenticate(device, username, password, remember);
                     }
                 });
             }
@@ -300,7 +299,7 @@ public class ScanActivity extends Activity {
     private String readableAuthError(Exception error) {
         String message = error.getMessage();
         if (message != null && message.contains("C000006D")) {
-            return "用户名或密码错误 (错误码: 0xC000006D)";
+            return "登录失败：用户名或密码错误 (0xC000006D)。若服务器为免密/Guest，请留空用户名和密码再登录";
         }
         if (message != null && message.toLowerCase(Locale.ROOT).contains("timed")) {
             return "连接超时，请检查IP或防火墙设置";
