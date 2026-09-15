@@ -15,8 +15,10 @@ jobs:
   build-samba:
     name: Build TVInstallerFromSamba release APK
     runs-on: ubuntu-latest
+    # Use the Android SDK preinstalled on the GitHub runner image so ANDROID_HOME and
+    # ANDROID_SDK_ROOT point to the same location (avoids the "conflicting SDK path" error).
     env:
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROID_HOME: /usr/local/lib/android/sdk
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,14 +29,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK (manual)
+      - name: Install required Android SDK packages
         run: |
-          SDK="$ANDROID_HOME"
-          mkdir -p "$SDK/cmdline-tools"
-          curl -fsSL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q cmdline-tools.zip -d "$SDK/cmdline-tools"
-          mv "$SDK/cmdline-tools/cmdline-tools" "$SDK/cmdline-tools/latest"
-          export PATH="$SDK/cmdline-tools/latest/bin:$SDK/platform-tools:$PATH"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           yes | sdkmanager --licenses || true
           yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
