@@ -126,7 +126,14 @@ public class SmbRepository {
         properties.setProperty("jcifs.smb.client.soTimeout", "5000");
 
         CIFSContext base = new BaseContext(new PropertyConfiguration(properties));
-        NtlmPasswordAuthenticator authenticator = new NtlmPasswordAuthenticator("", username, password);
+        NtlmPasswordAuthenticator authenticator;
+        if (TextUtils.isEmpty(username) || "guest".equalsIgnoreCase(username.trim())) {
+            // 匿名/Guest 登录：服务器开启免密或 guest 账号时以此方式接入。
+            // 必须传 null 用户名让 jcifs-ng 置 guest 标志，不能用带用户名的真实登录（否则密码不符被拒）。
+            authenticator = new NtlmPasswordAuthenticator(null, null, null);
+        } else {
+            authenticator = new NtlmPasswordAuthenticator("", username, password);
+        }
         return base.withCredentials(authenticator);
     }
 
