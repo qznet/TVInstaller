@@ -173,7 +173,7 @@ public class LanScanner {
     private List<String> hostsFromNetworkInterfaces() {
         List<String> hosts = new ArrayList<String>();
         try {
-            Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
+            java.util.Enumeration<java.net.NetworkInterface> interfaces = java.net.NetworkInterface.getNetworkInterfaces();
             if (interfaces == null) {
                 return hosts;
             }
@@ -182,7 +182,7 @@ public class LanScanner {
                 if (netIf.isLoopback() || netIf.isVirtual() || !netIf.isUp()) {
                     continue;
                 }
-                Enumeration<java.net.InetAddress> addresses = netIf.getInetAddresses();
+                java.util.Enumeration<java.net.InetAddress> addresses = netIf.getInetAddresses();
                 while (addresses.hasMoreElements()) {
                     java.net.InetAddress addr = addresses.nextElement();
                     if (addr instanceof java.net.Inet4Address) {
